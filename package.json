@@ -1,0 +1,8 @@
+{
+  "name": "nova-racer-online",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NOVA Racer browser arcade racing game with optional join-code multiplayer",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" }
+}
