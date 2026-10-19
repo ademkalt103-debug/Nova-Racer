@@ -1,8 +1,23 @@
 {
-  "name": "nova-racer-online",
-  "version": "1.0.0",
+  "name": "nova-racer-3d-ultimate",
+  "version": "3.0.0",
   "private": true,
-  "description": "NOVA Racer browser arcade racing game with optional join-code multiplayer",
+  "description": "NOVA RACER 3D: Ultimate Pixel Garage & Street Legends Edition - 3D WebGL Racing, Tuning & Real-Time Team-Code Multiplayer Server",
   "main": "server.js",
-  "scripts": { "start": "node server.js" }
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "racing",
+    "webgl",
+    "threejs",
+    "pixel-car-racer",
+    "multiplayer",
+    "websocket"
+  ],
+  "license": "MIT"
 }
