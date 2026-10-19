@@ -1,8 +1,9 @@
 'use strict';
 /**
- * NOVA RACER 3D — ULTIMATE PIXEL GARAGE & STREET LEGENDS SERVER
+ * NOVA RACER 3D — ULTIMATE OVERDRIVE v4.0 SERVER
  * Zero-dependency Node.js HTTP + RFC-6455 WebSocket Relay & Leaderboard Server
- * Optimized for Render.com (Free & Pro Tiers) + Local LAN/Localhost
+ * Supports Team-Code & Direct Invite Link (?room=CODE) Multiplayer, Game Modes,
+ * 3D Car/Tuning Sync, Tactical Items & Anti-Cache Delivery for Render.com
  */
 
 const http = require('http');
@@ -13,11 +14,10 @@ const crypto = require('crypto');
 const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
 
-// Security & Lobby Constants
 const MAX_PLAYERS_PER_ROOM = 8;
 const MAX_ROOMS = 500;
-const MAX_PAYLOAD = 32 * 1024; // 32 KB max WebSocket frame
-const MAX_MSGS_PER_SEC = 55;
+const MAX_PAYLOAD = 32 * 1024;
+const MAX_MSGS_PER_SEC = 65;
 const OPEN = 1;
 
 const rooms = new Map();
@@ -25,18 +25,21 @@ const sockets = new Map();
 const clients = new Set();
 const ipConnections = new Map();
 
-// In-Memory Global Highscores (Drag 1/4 Mile & Circuit Lap Records)
 const leaderboards = {
   drag: [
-    { name: 'NovaKing_AT', carName: '2026 Nova Jesko Hyperion X', whp: 1840, time: 6.42, speed: 368 },
-    { name: 'Godzilla_R34', carName: '1999 Skyline GT-R R34 V-Spec', whp: 1320, time: 7.18, speed: 329 },
+    { name: 'NovaKing_AT', carName: '2026 Nova Jesko Hyperion X', whp: 1890, time: 6.38, speed: 374 },
+    { name: 'Godzilla_R34', carName: '1999 Skyline GT-R R34 V-Spec', whp: 1340, time: 7.12, speed: 331 },
     { name: 'AkinaGhost', carName: '1998 Supra MK4 A80 RZ', whp: 1250, time: 7.45, speed: 318 },
     { name: 'SpoonEG6', carName: '1994 Civic EG6 Turbo', whp: 890, time: 8.31, speed: 284 }
   ],
   circuit: [
-    { name: 'NovaKing_AT', trackId: 0, carName: '2024 Porsche 911 GT3 RS 992', time: 42.18 },
-    { name: 'WörtherseeGT', trackId: 3, carName: '2026 Nova Jesko Hyperion X', time: 48.65 },
-    { name: 'RotaryFD', trackId: 2, carName: '1998 Mazda RX-7 FD Spirit R', time: 51.90 }
+    { name: 'NovaKing_AT', trackId: 'nova_gp', carName: '2024 Porsche 911 GT3 RS 992', time: 41.85 },
+    { name: 'WörtherseeGT', trackId: 'woerthersee_tour', carName: '2024 BMW M3 G80 Comp', time: 45.20 },
+    { name: 'RotaryFD', trackId: 'akina_touge', carName: '1998 Mazda RX-7 FD Spirit R', time: 49.90 }
+  ],
+  drift: [
+    { name: 'DK_Takumi', trackId: 'shibuya_drift', carName: '2002 Silvia S15 Spec-R', score: 48500 },
+    { name: 'RotaryFD', trackId: 'akina_touge', carName: '1998 Mazda RX-7 FD Spirit R', score: 39200 }
   ]
 };
 
@@ -52,8 +55,7 @@ const MIME = {
   '.ico': 'image/x-icon'
 };
 
-// Sanitization & Validation Helpers
-function cleanText(val, maxLen = 24, fallback = '') {
+function cleanText(val, maxLen = 28, fallback = '') {
   const s = String(val ?? '')
     .replace(/[<>"'`\\\u0000-\u001F\u007F]/g, '')
     .trim()
@@ -74,22 +76,32 @@ function clampNum(val, min, max, fallback = 0) {
 
 function sanitizePlayerProfile(input = {}, existing = {}) {
   return {
-    name: cleanText(input.name ?? existing.name, 18, 'Racer'),
-    carId: cleanText(input.carId ?? existing.carId, 24, 'eg6'),
-    carName: cleanText(input.carName ?? existing.carName, 36, 'Civic EG6'),
-    color: cleanColor(input.color ?? existing.color, '#38bdf8'),
-    finishType: cleanText(input.finishType ?? existing.finishType, 16, 'metallic'),
-    wheelColor: cleanColor(input.wheelColor ?? existing.wheelColor, '#fbbf24'),
+    name: cleanText(input.name ?? existing.name, 16, 'PILOT'),
+    carId: cleanText(input.carId ?? existing.carId, 28, 'civic_eg6'),
+    carName: cleanText(input.carName ?? existing.carName, 38, '1994 Civic EG6 Turbo'),
+    carClass: cleanText(input.carClass ?? existing.carClass, 6, 'D'),
+    pi: Math.round(clampNum(input.pi ?? existing.pi, 100, 999, 340)),
+    hp: Math.round(clampNum(input.hp ?? existing.hp, 100, 3500, 210)),
+    bodyColor: cleanColor(input.bodyColor ?? input.color ?? existing.bodyColor, '#38bdf8'),
+    rimColor: cleanColor(input.rimColor ?? existing.rimColor, '#fbbf24'),
     caliperColor: cleanColor(input.caliperColor ?? existing.caliperColor, '#ef4444'),
-    neonColor: cleanText(input.neonColor ?? existing.neonColor, 16, '#00f5ff'),
-    whp: Math.round(clampNum(input.whp ?? existing.whp, 100, 3500, 280)),
-    rank: cleanText(input.rank ?? existing.rank, 6, 'D'),
-    camber: clampNum(input.camber ?? existing.camber, -15, 0, -2),
-    rideHeight: clampNum(input.rideHeight ?? existing.rideHeight, -10, 5, 0),
-    hasBlower: Boolean(input.hasBlower ?? existing.hasBlower),
-    hasIntercooler: Boolean(input.hasIntercooler ?? existing.hasIntercooler),
-    spoilerType: Math.round(clampNum(input.spoilerType ?? existing.spoilerType, 0, 4, 1)),
-    ready: Boolean(input.ready ?? existing.ready ?? true)
+    neonColor: cleanColor(input.neonColor ?? existing.neonColor, '#00f2fe'),
+    finish: cleanText(input.finish ?? existing.finish, 16, 'metallic'),
+    livery: cleanText(input.livery ?? existing.livery, 16, 'none'),
+    rideHeightMm: clampNum(input.rideHeightMm ?? existing.rideHeightMm, -60, 20, -20),
+    camberDeg: clampNum(input.camberDeg ?? existing.camberDeg, -14, 0, -3),
+    carbonHood: Boolean(input.carbonHood ?? existing.carbonHood ?? false),
+    underglow: Boolean(input.underglow ?? existing.underglow ?? true),
+    parts: (typeof input.parts === 'object' && input.parts) ? input.parts : (existing.parts || {})
+  };
+}
+
+function sanitizeRoomConfig(cfg = {}, current = {}) {
+  return {
+    gameMode: cleanText(cfg.gameMode ?? current.gameMode, 20, 'circuit'),
+    trackId: cleanText(cfg.trackId ?? current.trackId, 32, 'sunset_coast'),
+    laps: Math.round(clampNum(cfg.laps ?? current.laps, 1, 10, 3)),
+    items: Boolean(cfg.items ?? current.items ?? true)
   };
 }
 
@@ -122,7 +134,7 @@ class TinyWebSocket {
 
   emit(name, val) {
     for (const fn of (this.events.get(name) || [])) {
-      try { fn(val); } catch (e) { /* ignore handler errors */ }
+      try { fn(val); } catch (e) {}
     }
   }
 
@@ -277,17 +289,15 @@ const server = http.createServer((req, res) => {
     pathname = '/';
   }
 
-  // Healthcheck for Render
   if (pathname === '/healthz') {
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
     return res.end('OK');
   }
 
-  // Live Status API
   if (pathname === '/api/status') {
     return sendJson(res, 200, {
       ok: true,
-      version: '3.0.0-ULTIMATE-3D',
+      version: '4.0.0-ULTIMATE-OVERDRIVE',
       uptimeSec: Math.round(process.uptime()),
       activeRooms: rooms.size,
       onlinePlayers: clients.size,
@@ -295,7 +305,6 @@ const server = http.createServer((req, res) => {
     });
   }
 
-  // Leaderboard API (GET & POST)
   if (pathname === '/api/leaderboard') {
     if (req.method === 'GET') {
       return sendJson(res, 200, leaderboards);
@@ -309,21 +318,29 @@ const server = http.createServer((req, res) => {
       req.on('end', () => {
         try {
           const data = JSON.parse(body);
-          const name = cleanText(data.name, 18, 'Racer');
-          const carName = cleanText(data.carName, 36, 'Custom Car');
+          const name = cleanText(data.name, 16, 'PILOT');
+          const carName = cleanText(data.carName, 38, 'Custom Car');
           if (data.mode === 'drag') {
-            const time = clampNum(data.time, 4.2, 60, 0);
-            const speed = Math.round(clampNum(data.speed, 80, 520, 200));
+            const time = clampNum(data.time, 3.8, 60, 0);
+            const speed = Math.round(clampNum(data.speed, 80, 560, 200));
             const whp = Math.round(clampNum(data.whp, 100, 3500, 300));
-            if (time >= 4.2) {
+            if (time >= 3.8) {
               leaderboards.drag.push({ name, carName, whp, time: Number(time.toFixed(3)), speed });
               leaderboards.drag.sort((a, b) => a.time - b.time);
               leaderboards.drag = leaderboards.drag.slice(0, 15);
             }
+          } else if (data.mode === 'drift') {
+            const score = Math.round(clampNum(data.score, 500, 999999, 0));
+            const trackId = cleanText(data.trackId, 32, 'shibuya_drift');
+            if (score >= 500) {
+              leaderboards.drift.push({ name, trackId, carName, score });
+              leaderboards.drift.sort((a, b) => b.score - a.score);
+              leaderboards.drift = leaderboards.drift.slice(0, 15);
+            }
           } else {
-            const time = clampNum(data.time, 15, 600, 0);
-            const trackId = Math.round(clampNum(data.trackId, 0, 10, 0));
-            if (time >= 15) {
+            const time = clampNum(data.time, 12, 600, 0);
+            const trackId = cleanText(data.trackId, 32, 'sunset_coast');
+            if (time >= 12) {
               leaderboards.circuit.push({ name, trackId, carName, time: Number(time.toFixed(2)) });
               leaderboards.circuit.sort((a, b) => a.time - b.time);
               leaderboards.circuit = leaderboards.circuit.slice(0, 15);
@@ -338,9 +355,9 @@ const server = http.createServer((req, res) => {
     }
   }
 
-  // Serve Static Files Safely
-  const allowedFiles = new Set(['/index.html', '/README.md', '/LICENSE', '/package.json']);
-  const fileToServe = allowedFiles.has(pathname) ? pathname.slice(1) : 'index.html';
+  // Wichtig: Liefert für alle normalen Seitenaufrufe garantiert die index.html als echtes HTML aus!
+  const allowedStatic = new Set(['/index.html', '/README.md', '/LICENSE']);
+  const fileToServe = allowedStatic.has(pathname) ? pathname.slice(1) : 'index.html';
   const target = path.join(ROOT, fileToServe);
 
   fs.readFile(target, (err, data) => {
@@ -356,7 +373,6 @@ const server = http.createServer((req, res) => {
   });
 });
 
-// WebSocket Room & Broadcast Helpers
 function send(ws, obj) {
   if (ws && ws.readyState === OPEN) {
     ws.send(JSON.stringify(obj));
@@ -421,18 +437,8 @@ function leaveRoom(ws) {
   broadcastLobbyState(room);
 }
 
-function sanitizeRoomConfig(cfg = {}, current = {}) {
-  return {
-    track: Math.round(clampNum(cfg.track ?? current.track, 0, 5, 0)),
-    laps: Math.round(clampNum(cfg.laps ?? current.laps, 1, 10, 3)),
-    weather: cleanText(cfg.weather ?? current.weather, 16, 'sunset'),
-    traffic: Boolean(cfg.traffic ?? current.traffic ?? false),
-    items: Boolean(cfg.items ?? current.items ?? true)
-  };
-}
-
 function attachGameProtocol(ws) {
-  const id = crypto.randomUUID().slice(0, 12);
+  const id = 'p_' + crypto.randomUUID().replace(/-/g, '').slice(0, 10);
   clients.add(ws);
 
   send(ws, {
@@ -457,11 +463,14 @@ function attachGameProtocol(ws) {
     try {
       msg = JSON.parse(buffer.toString('utf8'));
     } catch {
-      return send(ws, { type: 'error', message: 'Ungültiges Datenformat.' });
+      return;
     }
     if (!msg || typeof msg.type !== 'string') return;
 
-    // 1. Unified Join-or-Create by Custom Team Code (or Create New Room)
+    if (msg.type === 'pingClient') {
+      return send(ws, { type: 'pongClient', clientTs: msg.clientTs, serverTime: Date.now(), onlinePlayers: clients.size });
+    }
+
     if (msg.type === 'joinOrCreate' || msg.type === 'createRoom' || msg.type === 'joinRoom') {
       leaveRoom(ws);
       let requestedCode = String(msg.code || '')
@@ -469,25 +478,14 @@ function attachGameProtocol(ws) {
         .replace(/[^A-Z0-9]/g, '')
         .slice(0, 10);
 
-      if (msg.type === 'createRoom' && !requestedCode) {
-        requestedCode = genCode();
-      }
-      if (!requestedCode || requestedCode.length < 3) {
+      if (!requestedCode || requestedCode.length < 2) {
         requestedCode = genCode();
       }
 
       let room = rooms.get(requestedCode);
-
-      if (msg.type === 'joinRoom' && !room) {
-        // Auto-create room if user typed a custom team code so friends never get stuck!
-        if (rooms.size >= MAX_ROOMS) {
-          return send(ws, { type: 'error', message: 'Maximale Server-Raumanzahl erreicht.' });
-        }
-      }
-
       if (!room) {
         if (rooms.size >= MAX_ROOMS) {
-          return send(ws, { type: 'error', message: 'Server-Lobby voll.' });
+          return send(ws, { type: 'error', message: 'Maximale Server-Raumanzahl erreicht.' });
         }
         room = {
           code: requestedCode,
@@ -536,22 +534,18 @@ function attachGameProtocol(ws) {
       return;
     }
 
-    // 2. Live Garage / Car Profile Sync
     if (msg.type === 'updatePlayer') {
       player.profile = sanitizePlayerProfile(msg.player, player.profile);
       broadcastLobbyState(room);
       return;
     }
 
-    // 3. Room Configuration Sync (Track, Laps, Weather, Items)
     if (msg.type === 'updateConfig') {
-      if (room.hostId !== id) return;
       room.config = sanitizeRoomConfig(msg.config, room.config);
       broadcastLobbyState(room);
       return;
     }
 
-    // 4. Quick Chat / Lobby Emote
     if (msg.type === 'chat') {
       const text = cleanText(msg.text, 80, '');
       if (!text) return;
@@ -559,14 +553,12 @@ function attachGameProtocol(ws) {
         type: 'chat',
         playerId: id,
         name: player.profile.name,
-        color: player.profile.color,
         text,
         ts: Date.now()
       });
       return;
     }
 
-    // 5. Start Race (Host or 2+ Players Ready)
     if (msg.type === 'startRace') {
       room.started = true;
       room.config = sanitizeRoomConfig(msg.config, room.config);
@@ -582,55 +574,35 @@ function attachGameProtocol(ws) {
       return;
     }
 
-    // 6. Return to Lobby for Rematch
-    if (msg.type === 'returnToLobby') {
-      room.started = false;
-      broadcastLobbyState(room);
-      return;
-    }
-
-    // 7. Tactical Action / Horn / Nitro Purge / EMP / Oil Hazard
     if (msg.type === 'action') {
       broadcast(room, {
         type: 'playerAction',
         playerId: id,
         name: player.profile.name,
-        kind: cleanText(msg.kind, 16, 'horn'),
+        kind: cleanText(msg.kind, 16, 'oil'),
         x: clampNum(msg.x, -50000, 50000, 0),
         z: clampNum(msg.z, -50000, 50000, 0)
       }, ws);
       return;
     }
 
-    // 8. Real-Time 3D Telemetry State Relay
     if (msg.type === 'state') {
       const s = msg.state || {};
       player.state = {
         id,
         name: player.profile.name,
         carId: player.profile.carId,
-        color: player.profile.color,
-        finishType: player.profile.finishType,
-        wheelColor: player.profile.wheelColor,
-        neonColor: player.profile.neonColor,
-        camber: player.profile.camber,
-        rideHeight: player.profile.rideHeight,
-        hasBlower: player.profile.hasBlower,
-        hasIntercooler: player.profile.hasIntercooler,
-        spoilerType: player.profile.spoilerType,
-        whp: player.profile.whp,
-        rank: player.profile.rank,
         x: clampNum(s.x, -100000, 100000, 0),
-        y: clampNum(s.y, -1000, 5000, 0),
-        z: clampNum(s.z ?? s.y, -100000, 100000, 0),
-        angle: clampNum(s.angle, -1000, 1000, 0),
-        steer: clampNum(s.steer, -1, 1, 0),
+        z: clampNum(s.z, -100000, 100000, 0),
+        heading: clampNum(s.heading, -1000, 1000, 0),
+        steerAngle: clampNum(s.steerAngle, -1, 1, 0),
         speed: clampNum(s.speed, -200, 650, 0),
-        lap: Math.round(clampNum(s.lap, 0, 20, 1)),
-        progress: clampNum(s.progress, 0, 100, 0),
-        drifting: Boolean(s.drifting),
-        nos: Boolean(s.nos),
-        headlights: Boolean(s.headlights ?? true),
+        lap: Math.round(clampNum(s.lap, 1, 20, 1)),
+        sampleIdx: Math.round(clampNum(s.sampleIdx, 0, 2000, 0)),
+        driftCash: Math.round(clampNum(s.driftCash, 0, 9999999, 0)),
+        isDrifting: Boolean(s.isDrifting),
+        isBraking: Boolean(s.isBraking),
+        useNos: Boolean(s.useNos),
         finished: Boolean(s.finished),
         finishTime: clampNum(s.finishTime, 0, 3600, 0)
       };
@@ -639,7 +611,6 @@ function attachGameProtocol(ws) {
   });
 }
 
-// WebSocket Upgrade Handler (/race and /ws)
 server.on('upgrade', (req, socket, head) => {
   let pathname = '';
   try {
@@ -658,7 +629,7 @@ server.on('upgrade', (req, socket, head) => {
 
   const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
   const currentCount = ipConnections.get(ip) || 0;
-  if (currentCount >= 16) {
+  if (currentCount >= 20) {
     socket.write('HTTP/1.1 429 Too Many Requests\r\nConnection: close\r\n\r\n');
     socket.destroy();
     return;
@@ -687,7 +658,6 @@ server.on('upgrade', (req, socket, head) => {
   attachGameProtocol(ws);
 });
 
-// Keep-Alive Heartbeat for Render Load Balancer (every 20s)
 setInterval(() => {
   const now = Date.now();
   for (const ws of clients) {
@@ -701,7 +671,7 @@ setInterval(() => {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`====================================================`);
-  console.log(`🚀 NOVA RACER 3D ULTIMATE SERVER RUNNING ON PORT ${PORT}`);
+  console.log(`🚀 NOVA RACER 3D v4.0 OVERDRIVE SERVER ON PORT ${PORT}`);
   console.log(`🌐 URL: http://localhost:${PORT}`);
   console.log(`⚡ WebSocket Relay: ws://localhost:${PORT}/race`);
   console.log(`====================================================`);
