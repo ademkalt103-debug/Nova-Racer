@@ -1,1609 +1,1841 @@
-<!-- ... existing code ... -->
-                        // Spawn 3D Speed Boost Pads & Nitro/Cash Pickups on the Road
-                        if (i > 15 && i % 42 === 0) {
-                            const padMesh = new THREE.Mesh(
-                                new THREE.BoxGeometry(4.6, 0.08, 6.5),
-                                new THREE.MeshBasicMaterial({ color: 0x00f2fe, transparent: true, opacity: 0.78 })
-                            );
-                            padMesh.position.set(s.x, 0.06, s.z);
-                            padMesh.rotation.y = s.angle;
-                            this.scene.add(padMesh);
-                            this.boostPads.push({ x: s.x, z: s.z, mesh: padMesh });
-                        } else if (i > 25 && i % 55 === 0) {
-                            const isCash = (i % 110 === 0);
-                            const pickupMesh = new THREE.Mesh(
-                                new THREE.OctahedronGeometry(0.95, 0),
-                                new THREE.MeshStandardMaterial({
-                                    color: isCash ? 0x10b981 : 0xf43f5e,
-                                    emissive: isCash ? 0x059669 : 0xe11d48,
-                                    emissiveIntensity: 0.65,
-                                    metalness: 0.8,
-                                    roughness: 0.2
-                                })
-                            );
-                            pickupMesh.position.set(s.x + s.nx * ((i % 2 === 0) ? 3.5 : -3.5), 1.15, s.z + s.nz * ((i % 2 === 0) ? 3.5 : -3.5));
-                            this.scene.add(pickupMesh);
-                            this.trackPickups.push({ x: pickupMesh.position.x, z: pickupMesh.position.z, kind: isCash ? 'cash' : 'nos', mesh: pickupMesh, cooldown: 0 });
-                        }
-
-                        // Rich Trackside Landmarks & Scenery
-                        if (i % 10 === 0) {
-                            const side = (i % 20 === 0) ? 1 : -1;
-                            const dist = halfW + 15 + (i % 18);
-                            const px = s.x + s.nx * side * dist;
-                            const pz = s.z + s.nz * side * dist;
-
-                            if (track.sceneryType === 'cybercity' || track.sceneryType === 'drift_arena') {
-                                const h = 22 + (i % 48);
-                                const bldg = new THREE.Mesh(
-                                    new THREE.BoxGeometry(10, h, 10),
-                                    new THREE.MeshStandardMaterial({
-                                        color: 0x0b1120,
-                                        emissive: (i % 20 === 0) ? 0x0284c7 : 0xe11d48,
-                                        emissiveIntensity: 0.28
-                                    })
-                                );
-                                bldg.position.set(px, h * 0.5, pz);
-                                this.scene.add(bldg);
-                            } else if (track.sceneryType === 'woerthersee' && i === 60) {
-                                // Iconic 3D Pyramidenkogel Observation Tower & Turquoise Lake
-                                const lake = new THREE.Mesh(
-                                    new THREE.CircleGeometry(155, 32),
-                                    new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.14, metalness: 0.75, envMap: this.envMap })
-                                );
-                                lake.rotation.x = -Math.PI * 0.5;
-                                lake.position.set(110, 0.0, 145);
-                                this.scene.add(lake);
-
-                                const towerGroup = new THREE.Group();
-                                const spire = new THREE.Mesh(
-                                    new THREE.CylinderGeometry(1.4, 5.5, 48, 12),
-                                    new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.45 })
-                                );
-                                spire.position.y = 24;
-                                const deck = new THREE.Mesh(
-                                    new THREE.CylinderGeometry(4.4, 4.4, 3.6, 16),
-                                    new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.85, roughness: 0.15 })
-                                );
-                                deck.position.y = 42;
-                                const needle = new THREE.Mesh(
-                                    new THREE.CylinderGeometry(0.18, 0.5, 16, 8),
-                                    new THREE.MeshStandardMaterial({ color: 0xf8fafc })
-                                );
-                                needle.position.y = 51;
-                                towerGroup.add(spire, deck, needle);
-                                towerGroup.position.set(px, 0, pz);
-                                this.scene.add(towerGroup);
-                            } else if (track.sceneryType === 'gp_stadium' && i % 30 === 0) {
-                                // Grandstand
-                                const stand = new THREE.Mesh(
-                                    new THREE.BoxGeometry(18, 8, 8),
-                                    new THREE.MeshStandardMaterial({ color: 0x1e293b })
-                                );
-                                stand.position.set(px, 4, pz);
-                                stand.rotation.y = s.angle;
-                                this.scene.add(stand);
-                            } else {
-                                // Pine / Coastal Tree
-                                const trunk = new THREE.Mesh(
-                                    new THREE.CylinderGeometry(0.4, 0.6, 4.2, 6),
-                                    new THREE.MeshStandardMaterial({ color: 0x451a03 })
-                                );
-                                trunk.position.set(px, 2.1, pz);
-                                const leavesColor = track.sceneryType === 'touge' && (i % 30 === 0) ? 0xf472b6 : 0x15803d;
-                                const leaves = new THREE.Mesh(
-                                    new THREE.ConeGeometry(3.0, 7.5, 7),
-                                    new THREE.MeshStandardMaterial({ color: leavesColor })
-                                );
-                                leaves.position.set(px, 6.6, pz);
-                                this.scene.add(trunk, leaves);
-                            }
-                        }
-                    }
-
-                    // 3 Sector Checkpoint Gantries (25%, 50%, 75%) + Start/Finish Gantry (0%)
-                    const sectorIndices = [
-                        { idx: 0, col: 0x38bdf8 },
-                        { idx: Math.floor(numSamples * 0.25), col: 0xa855f7 },
-                        { idx: Math.floor(numSamples * 0.50), col: 0xf59e0b },
-                        { idx: Math.floor(numSamples * 0.75), col: 0x10b981 }
-                    ];
-                    sectorIndices.forEach(sec => {
-                        const sc = this.trackSamples[sec.idx];
-                        const gantry = new THREE.Mesh(
-                            new THREE.BoxGeometry(track.roadWidth + 4, 1.3, 1.3),
-                            new THREE.MeshBasicMaterial({ color: sec.col })
-                        );
-                        gantry.position.set(sc.x, 6.6, sc.z);
-                        gantry.rotation.y = sc.angle;
-                        this.scene.add(gantry);
-                    });
-                }
-            }
-
-            spawnRaceGrid(track, isMultiplayer) {
-                this.racers = [];
-                const playerStats = this.getCarComputedStats(this.selectedCarId);
-                const s0 = this.trackSamples[0];
-                const playerName = (document.getElementById('playerNameInput').value || 'PILOT').trim();
-
-                const createRacerEntity = (id, name, carId, cfg, stats, laneOffset, zOffset, isPlayer, isAi) => {
-                    const carSpec = CARS_DB.find(c => c.id === carId) || CARS_DB[0];
-                    const mesh = buildDetailed3DCar(carSpec, cfg, this.envMap);
-                    const startX = s0.x + s0.nx * laneOffset - s0.tx * zOffset;
-                    const startZ = s0.z + s0.nz * laneOffset - s0.tz * zOffset;
-
-                    mesh.position.set(startX, 0, startZ);
-                    mesh.rotation.y = s0.angle;
-                    this.scene.add(mesh);
-
-                    return {
-                        id,
-                        name,
-                        isPlayer,
-                        isAi,
-                        carSpec,
-                        cfg,
-                        stats,
-                        mesh,
-                        x: startX,
-                        z: startZ,
-                        heading: s0.angle,
-                        speed: 0,
-                        gear: 1,
-                        rpm: 1000,
-                        psi: 0,
-                        nosAmount: 100,
-                        oilCharges: 2,
-                        spinTimer: 0,
-                        isTwoStep: false,
-                        isBraking: false,
-                        isDrifting: false,
-                        steerAngle: 0,
-                        sampleIdx: 0,
-                        sectorMask: 0,
-                        lap: 1,
-                        finished: false,
-                        finishTime: 0,
-                        elapsedTime: 0,
-                        driftCash: 0,
-                        driftCombo: 1,
-                        laneOffset
-                    };
-                };
-
-                this.playerRacer = createRacerEntity(
-                    'local',
-                    playerName,
-                    this.selectedCarId,
-                    playerStats.cfg,
-                    playerStats,
-                    track.isDrag ? -4.2 : -3.8,
-                    0,
-                    true,
-                    false
-                );
-                this.racers.push(this.playerRacer);
-                document.getElementById('hudOilCount').textContent = '2';
-                this.updateSectorPillsUI(0);
-
-                // Spawn Connected Multiplayer Teammates
-                if (isMultiplayer) {
-                    Object.values(this.lobbyPlayers).forEach((mp, idx) => {
-                        if (mp.id === this.getLocalPlayerId()) return;
-                        const cId = mp.carId && CARS_DB.some(c => c.id === mp.carId) ? mp.carId : 'skyline_r34';
-                        const baseCfg = this.carConfigs[cId];
-                        const customCfg = Object.assign({}, baseCfg, {
-                            bodyColor: mp.bodyColor || baseCfg.bodyColor,
-                            rimColor: mp.rimColor || baseCfg.rimColor,
-                            caliperColor: mp.caliperColor || baseCfg.caliperColor,
-                            neonColor: mp.neonColor || baseCfg.neonColor,
-                            finish: mp.finish || baseCfg.finish,
-                            livery: mp.livery || baseCfg.livery,
-                            rideHeightMm: mp.rideHeightMm ?? baseCfg.rideHeightMm,
-                            camberDeg: mp.camberDeg ?? baseCfg.camberDeg,
-                            parts: Object.assign({}, baseCfg.parts, mp.parts || {})
-                        });
-                        const st = this.getCarComputedStats(cId);
-                        const lane = (idx % 2 === 0) ? 4.2 : -4.2;
-                        const backZ = track.isDrag ? 0 : (idx + 1) * 6;
-                        const r = createRacerEntity(mp.id, mp.name || 'RACER', cId, customCfg, st, lane, backZ, false, false);
-                        this.racers.push(r);
-                    });
-                }
-
-                // Spawn AI Opponents (except in pure Time Attack mode)
-                const maxGrid = this.gameMode === 'timeattack' ? 1 : (track.isDrag ? 2 : 4);
-                const aiCount = Math.max(0, maxGrid - this.racers.length);
-                const aiNames = ['TAKUMI-AE86', 'GODZILLA-R34', 'WANGAN-SUPRA', 'GT3-APEX'];
-                for (let a = 0; a < aiCount; a++) {
-                    const aiCar = CARS_DB[Math.min(CARS_DB.length - 1, (a + 2) % CARS_DB.length)];
-                    const st = this.getCarComputedStats(aiCar.id);
-                    const lane = track.isDrag ? 4.2 : ((a % 2 === 0) ? 4.0 : -4.0);
-                    const backZ = track.isDrag ? 0 : (a + 1) * 7.5;
-                    const aiRacer = createRacerEntity('ai_' + a, aiNames[a], aiCar.id, st.cfg, st, lane, backZ, false, true);
-                    this.racers.push(aiRacer);
-                }
-            }
-
-            updateSectorPillsUI(mask) {
-                const s1 = document.getElementById('sectorPill1');
-                const s2 = document.getElementById('sectorPill2');
-                const s3 = document.getElementById('sectorPill3');
-                if (!s1 || !s2 || !s3) return;
-                s1.className = `py-0.5 rounded ${(mask & 1) ? 'bg-purple-500 text-slate-950 font-black' : 'bg-slate-900 text-slate-500'}`;
-                s2.className = `py-0.5 rounded ${(mask & 2) ? 'bg-amber-400 text-slate-950 font-black' : 'bg-slate-900 text-slate-500'}`;
-                s3.className = `py-0.5 rounded ${(mask & 4) ? 'bg-emerald-400 text-slate-950 font-black' : 'bg-slate-900 text-slate-500'}`;
-            }
-
-            // ========================================================================
-            // TACTICAL ITEMS (3D OIL SLICK HAZARD & HORN)
-            // ========================================================================
-            dropOilHazard() {
-                if (!this.playerRacer || !this.raceStarted || this.playerRacer.oilCharges <= 0) return;
-                this.playerRacer.oilCharges--;
-                document.getElementById('hudOilCount').textContent = `${this.playerRacer.oilCharges}`;
-                const r = this.playerRacer;
-                const ox = r.x - Math.sin(r.heading) * 3.8;
-                const oz = r.z - Math.cos(r.heading) * 3.8;
-                this.spawnOilMeshAt(ox, oz, r.id);
-                this.sound.playBeep(310, 0.14);
-                this.showToast('🛢️ 3D Öl-Falle auf der Strecke platziert!', 'amber');
-                this.sendNetworkPacket({ type: 'PLAYER_ACTION', room: this.roomCode, kind: 'oil', x: ox, z: oz, id: this.getLocalPlayerId() });
-                if (this.ws && this.wsConnected) {
-                    this.ws.send(JSON.stringify({ type: 'action', kind: 'oil', x: ox, z: oz }));
-                }
-            }
-
-            spawnOilMeshAt(x, z, ownerId) {
-                const oilMesh = new THREE.Mesh(
-                    new THREE.CircleGeometry(2.5, 16),
-                    new THREE.MeshStandardMaterial({ color: 0x1e1b4b, roughness: 0.08, metalness: 0.92 })
-                );
-                oilMesh.rotation.x = -Math.PI * 0.5;
-                oilMesh.position.set(x, 0.04, z);
-                this.scene.add(oilMesh);
-                this.oilHazards.push({ x, z, ownerId, mesh: oilMesh, active: true });
-            }
-
-            triggerHorn() {
-                this.sound.playHorn();
-                if (this.playerRacer) {
-                    this.showStatusBanner('📣 HORN / LICHTHUPE AKTIV!');
-                }
-            }
-
-            showStatusBanner(txt) {
-                const b = document.getElementById('hudStatusBanner');
-                if (!b) return;
-                b.classList.remove('hidden');
-                b.textContent = txt;
-                clearTimeout(this._bannerTimeout);
-                this._bannerTimeout = setTimeout(() => b.classList.add('hidden'), 1800);
-            }
-
-            // ========================================================================
-            // 3D PHYSICS, GUARDRAIL COLLISION + SPARKS, 3-SECTOR CHECKPOINTS & DRAG
-            // ========================================================================
-            manualShift(dir) {
-                if (!this.playerRacer) return;
-                const nextG = Math.max(1, Math.min(6, this.playerRacer.gear + dir));
-                if (nextG !== this.playerRacer.gear) {
-                    this.playerRacer.gear = nextG;
-                    this.sound.playBovFlutter();
-                    this.sound.playBackfirePop();
-                    this.playerRacer.mesh.userData.flameMat.opacity = 1.0;
-                    setTimeout(() => {
-                        if (this.playerRacer) this.playerRacer.mesh.userData.flameMat.opacity = 0;
-                    }, 160);
-                }
-            }
-
-            cycleCameraMode() {
-                this.cameraMode = (this.cameraMode + 1) % 4;
-                document.getElementById('defaultCamSelect').value = String(this.cameraMode);
-                const names = ['3D Chase Cam', 'Action Nah', 'Motorhaube / Blower', 'PCR Side-Cam'];
-                this.showToast(`🎥 Kamera: ${names[this.cameraMode]}`, 'sky');
-            }
-
-            setCameraMode(m) {
-                this.cameraMode = m;
-            }
-
-            resetCarOnTrack() {
-                if (!this.playerRacer || this.trackSamples.length === 0) return;
-                const s = this.trackSamples[this.playerRacer.sampleIdx];
-                this.playerRacer.x = s.x;
-                this.playerRacer.z = s.z;
-                this.playerRacer.heading = s.angle;
-                this.playerRacer.speed = 0;
-                this.playerRacer.spinTimer = 0;
-                this.showToast('↺ Fahrzeug auf die Ideallinie gesetzt', 'sky');
-            }
-
-            spawnGuardrailSparks(x, z) {
-                for (let i = 0; i < 5; i++) {
-                    const spark = new THREE.Mesh(
-                        new THREE.BoxGeometry(0.12, 0.12, 0.35),
-                        new THREE.MeshBasicMaterial({ color: (i % 2 === 0) ? 0xfef08a : 0xf97316 })
-                    );
-                    spark.position.set(x + (Math.random() - 0.5) * 0.8, 0.45 + Math.random() * 0.4, z + (Math.random() - 0.5) * 0.8);
-                    this.scene.add(spark);
-                    this.sparkParticles.push({
-                        mesh: spark,
-                        vx: (Math.random() - 0.5) * 8,
-                        vy: 2 + Math.random() * 5,
-                        vz: (Math.random() - 0.5) * 8,
-                        life: 0.32
-                    });
-                }
-            }
-
-            spawnTireSmoke(x, z) {
-                const puff = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.34, 6, 6),
-                    new THREE.MeshBasicMaterial({ color: 0xe2e8f0, transparent: true, opacity: 0.42 })
-                );
-                puff.position.set(x + (Math.random() - 0.5) * 1.4, 0.2, z + (Math.random() - 0.5) * 1.4);
-                this.scene.add(puff);
-                this.smokeParticles.push({ mesh: puff, life: 0.52 });
-            }
-
-            updateRacePhysics(dt) {
-                const p = this.playerRacer;
-                if (!p) return;
-
-                const gasPressed = this.isInputActive('up');
-                const brakePressed = this.isInputActive('down');
-                const leftPressed = this.isInputActive('left');
-                const rightPressed = this.isInputActive('right');
-                const handbrakePressed = this.isInputActive('space');
-                const nosPressed = this.isInputActive('nos');
-
-                // 1. Update Christmas Tree / Countdown
-                if (!this.raceStarted) {
-                    this.raceCountdown -= dt;
-                    const c = this.raceCountdown;
-
-                    document.getElementById('treeAmber1').className = `w-4 h-4 rounded-full ${c < 2.6 ? 'bg-amber-400 shadow-[0_0_12px_#f59e0b]' : 'bg-slate-800 border border-slate-600'}`;
-                    document.getElementById('treeAmber2').className = `w-4 h-4 rounded-full ${c < 1.7 ? 'bg-amber-400 shadow-[0_0_12px_#f59e0b]' : 'bg-slate-800 border border-slate-600'}`;
-                    document.getElementById('treeAmber3').className = `w-4 h-4 rounded-full ${c < 0.85 ? 'bg-amber-400 shadow-[0_0_12px_#f59e0b]' : 'bg-slate-800 border border-slate-600'}`;
-
-                    // 2-Step Launch Control while waiting at the tree!
-                    if (gasPressed && (handbrakePressed || p.stats.twoStep)) {
-                        p.isTwoStep = true;
-                        p.rpm = p.stats.redline * 0.74 + Math.sin(performance.now() * 0.06) * 350;
-                        p.psi = Math.min(p.stats.psi, p.psi + dt * 28);
-                        p.mesh.userData.flameMat.color.setHex(0xf97316);
-                        p.mesh.userData.flameMat.opacity = (Math.random() > 0.28) ? 0.95 : 0.15;
-                        const b = document.getElementById('hudStatusBanner');
-                        b.classList.remove('hidden');
-                        b.textContent = `🔥 2-STEP ANTI-LAG AKTIV (${Math.round(p.rpm)} RPM | ${p.psi.toFixed(1)} PSI)!`;
-                    } else {
-                        p.isTwoStep = false;
-                        p.rpm = gasPressed ? 3600 : 1050;
-                        p.psi = Math.max(0, p.psi - dt * 12);
-                        p.mesh.userData.flameMat.opacity = 0;
-                        document.getElementById('hudStatusBanner').classList.add('hidden');
-                    }
-
-                    if (c <= 0) {
-                        this.raceStarted = true;
-                        this.sound.playBeep(960, 0.25);
-                        document.getElementById('treeGreen').className = 'w-5 h-5 rounded-full bg-emerald-400 shadow-[0_0_16px_#10b981]';
-                        document.getElementById('treeBannerText').textContent = 'GO! GO! GO!';
-                        if (p.isTwoStep) {
-                            p.speed = 11.5; // Instant launch boost from 2-Step!
-                            this.showStatusBanner('🚀 PERFEKTER 2-STEP LAUNCH!');
-                        }
-                        setTimeout(() => {
-                            document.getElementById('christmasTreeOverlay').classList.add('hidden');
-                            document.getElementById('christmasTreeOverlay').classList.remove('flex');
-                        }, 850);
-                    }
-
-                    this.sound.updateEngine(p.rpm / p.stats.redline, p.psi / 40, gasPressed ? 1 : 0, true, p.isTwoStep);
-                    this.updateRaceHUD();
-                    return;
-                }
-
-                // 2. Rotate Pickups & Check Cooldowns
-                this.trackPickups.forEach(pk => {
-                    if (pk.cooldown > 0) {
-                        pk.cooldown = Math.max(0, pk.cooldown - dt);
-                        pk.mesh.visible = pk.cooldown === 0;
-                    } else {
-                        pk.mesh.rotation.y += dt * 2.6;
-                    }
-                });
-
-                const gearRatios = [0, 3.4, 2.35, 1.72, 1.32, 1.05, 0.86];
-                const topSpeedMs = 60 + (p.stats.hp / 25);
-                const totalSamples = this.trackSamples.length;
-
-                this.racers.forEach(r => {
-                    if (r.finished) return;
-                    r.elapsedTime += dt;
-
-                    if (r.isPlayer) {
-                        const throttle = gasPressed ? 1 : 0;
-                        r.isBraking = brakePressed;
-                        const useNos = nosPressed && r.nosAmount > 0 && throttle > 0;
-
-                        if (useNos) {
-                            r.nosAmount = Math.max(0, r.nosAmount - dt * (100 / Math.max(3.5, r.stats.nosDuration)));
-                            r.mesh.userData.flameMat.color.setHex(0x00f2fe);
-                            r.mesh.userData.flameMat.opacity = 0.95;
-                        } else if (!r.isTwoStep) {
-                            r.mesh.userData.flameMat.opacity *= 0.84;
-                        }
-
-                        // Calculate Gear & RPM
-                        const gearMaxSpeed = (topSpeedMs / gearRatios[r.gear]) * 0.95;
-                        const speedRatioInGear = r.speed / Math.max(12, gearMaxSpeed);
-                        r.rpm = Math.min(r.stats.redline, Math.max(1050, 1100 + speedRatioInGear * (r.stats.redline - 1100)));
-
-                        if (this.transmission === 'auto') {
-                            if (r.rpm >= r.stats.redline * 0.93 && r.gear < 6) {
-                                this.manualShift(1);
-                            } else if (r.rpm < 2850 && r.gear > 1 && r.speed < gearMaxSpeed * 0.46) {
-                                r.gear--;
-                            }
-                        }
-
-                        if (throttle > 0) {
-                            r.psi = Math.min(r.stats.psi, r.psi + dt * 19);
-                        } else {
-                            r.psi = Math.max(0, r.psi - dt * 24);
-                        }
-
-                        // Slipstream Drafting behind opponents
-                        let slipstreamBonus = 1.0;
-                        this.racers.forEach(other => {
-                            if (other !== r && !other.finished) {
-                                const dx = other.x - r.x, dz = other.z - r.z;
-                                const dist = Math.hypot(dx, dz);
-                                if (dist > 3 && dist < 22 && r.speed > 20) {
-                                    slipstreamBonus = 1.12;
-                                }
-                            }
-                        });
-
-                        const powerFactor = (r.stats.hp / (r.stats.weight / 1000)) * 0.049 * slipstreamBonus;
-                        const nosMult = useNos ? (1 + r.stats.nosBoost) : 1.0;
-                        const revLimiterPenalty = (this.transmission === 'manual' && r.rpm >= r.stats.redline * 0.99) ? 0.15 : 1.0;
-
-                        if (r.spinTimer > 0) {
-                            r.spinTimer -= dt;
-                            r.heading += dt * 6.5;
-                            r.speed *= (1 - 1.5 * dt);
-                        } else if (throttle > 0 && !handbrakePressed) {
-                            r.speed = Math.min(topSpeedMs * 1.18, r.speed + powerFactor * nosMult * revLimiterPenalty * dt);
-                        } else if (r.isBraking) {
-                            r.speed = Math.max(-12, r.speed - 42 * dt);
-                        } else {
-                            r.speed = Math.max(0, r.speed - 7.2 * dt);
-                        }
-
-                        // Steering (Touch Buttons + Keyboard + Optional Gyroscope Tilt)
-                        let steerInput = (leftPressed ? 1 : 0) - (rightPressed ? 1 : 0);
-                        if (this.gyroEnabled && Math.abs(this.gyroSteerVal) > 0.05 && steerInput === 0) {
-                            steerInput = this.gyroSteerVal;
-                        }
-                        r.steerAngle = steerInput * 0.55;
-
-                        if (this.activeTrack.isDrag) {
-                            // Slight lane steering on Drag Strip + Guardrail clamp
-                            r.x += steerInput * 6.5 * dt;
-                            const maxLaneX = this.activeTrack.roadWidth * 0.45;
-                            if (Math.abs(r.x) > maxLaneX) {
-                                r.x = Math.sign(r.x) * maxLaneX;
-                                r.speed *= (1 - 0.35 * dt);
-                                this.spawnGuardrailSparks(r.x, r.z);
-                                this.sound.playGuardrailScrape();
-                            }
-                            r.z += r.speed * dt;
-                        } else {
-                            if (Math.abs(r.speed) > 1.2 && r.spinTimer <= 0) {
-                                r.isDrifting = (handbrakePressed || this.gameMode === 'drift') && Math.abs(steerInput) > 0.1 && r.speed > 14;
-                                const turnRate = (1.68 + r.stats.grip * 0.45) * (r.isDrifting ? 1.36 : 1.0);
-                                r.heading += steerInput * turnRate * dt * Math.sign(r.speed);
-
-                                if (r.isDrifting) {
-                                    r.driftCombo = Math.min(5, +(r.driftCombo + dt * 0.45).toFixed(1));
-                                    const pts = Math.round(r.speed * dt * 18 * r.driftCombo);
-                                    r.driftCash += pts;
-                                    this.spawnTireSmoke(r.x, r.z);
-                                } else {
-                                    r.driftCombo = Math.max(1, +(r.driftCombo - dt * 0.8).toFixed(1));
-                                }
-                            }
-
-                            r.x += Math.sin(r.heading) * r.speed * dt;
-                            r.z += Math.cos(r.heading) * r.speed * dt;
-
-                            // 3D GUARDRAIL (LEITPLANKE) PHYSICAL COLLISION & SPARK DEFLECTION
-                            const nearest = this.findNearestSample(r.x, r.z);
-                            r.sampleIdx = nearest.idx;
-                            const s = this.trackSamples[nearest.idx];
-                            const guardrailLimit = this.activeTrack.roadWidth * 0.5 + 0.55;
-
-                            if (nearest.dist > guardrailLimit) {
-                                const dx = r.x - s.x;
-                                const dz = r.z - s.z;
-                                const sideSign = (dx * s.nx + dz * s.nz) >= 0 ? 1 : -1;
-                                // Clamp car back inside the 3D Guardrail
-                                r.x = s.x + s.nx * sideSign * (guardrailLimit - 0.15);
-                                r.z = s.z + s.nz * sideSign * (guardrailLimit - 0.15);
-
-                                // Smoothly align car heading toward track tangent
-                                let angleDiff = s.angle - r.heading;
-                                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-                                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-                                r.heading += angleDiff * 0.38;
-                                r.speed *= 0.90;
-
-                                this.spawnGuardrailSparks(r.x + s.nx * sideSign * 0.8, r.z + s.nz * sideSign * 0.8);
-                                this.sound.playGuardrailScrape();
-                                this.showStatusBanner('💥 LEITPLANKEN-KONTAKT!');
-                            }
-
-                            // Check Boost Pads
-                            this.boostPads.forEach(pad => {
-                                if (Math.hypot(r.x - pad.x, r.z - pad.z) < 4.5) {
-                                    r.speed = Math.min(topSpeedMs * 1.25, r.speed + 24 * dt + 2.2);
-                                    r.driftCash += 50;
-                                    this.sound.playBeep(880, 0.06);
-                                    this.showStatusBanner('⚡ TURBO BOOST-PAD AKTIV!');
-                                }
-                            });
-
-                            // Check Pickups (N2O & Cash)
-                            this.trackPickups.forEach(pk => {
-                                if (pk.cooldown <= 0 && Math.hypot(r.x - pk.x, r.z - pk.z) < 3.6) {
-                                    pk.cooldown = 8.0;
-                                    pk.mesh.visible = false;
-                                    this.sound.playBeep(940, 0.12);
-                                    if (pk.kind === 'cash') {
-                                        r.driftCash += 1500;
-                                        this.showStatusBanner('💵 +$1,500 STRECKEN-BONUS!');
-                                    } else {
-                                        r.nosAmount = Math.min(100, r.nosAmount + 45);
-                                        this.showStatusBanner('🧪 +45% N2O NITRO AUFGELADEN!');
-                                    }
-                                }
-                            });
-
-                            // Check Oil Hazards
-                            this.oilHazards.forEach(oil => {
-                                if (oil.active && oil.ownerId !== r.id && Math.hypot(r.x - oil.x, r.z - oil.z) < 2.8) {
-                                    oil.active = false;
-                                    this.scene.remove(oil.mesh);
-                                    r.spinTimer = 0.65;
-                                    this.sound.playGuardrailScrape();
-                                    this.showStatusBanner('🛢️ AUF ÖL-SPUR AUSGERUTSCHT!');
-                                }
-                            });
-
-                            // 3-Sector Checkpoint Validation (25%, 50%, 75%)
-                            const progressFrac = r.sampleIdx / totalSamples;
-                            if (progressFrac > 0.18 && progressFrac < 0.35 && !(r.sectorMask & 1)) {
-                                r.sectorMask |= 1;
-                                this.updateSectorPillsUI(r.sectorMask);
-                                this.sound.playBeep(680, 0.06);
-                            } else if (progressFrac > 0.42 && progressFrac < 0.60 && (r.sectorMask & 1) && !(r.sectorMask & 2)) {
-                                r.sectorMask |= 2;
-                                this.updateSectorPillsUI(r.sectorMask);
-                                this.sound.playBeep(760, 0.06);
-                            } else if (progressFrac > 0.68 && progressFrac < 0.88 && (r.sectorMask & 2) && !(r.sectorMask & 4)) {
-                                r.sectorMask |= 4;
-                                this.updateSectorPillsUI(r.sectorMask);
-                                this.sound.playBeep(840, 0.06);
-                            }
-
-                            // Complete Lap when crossing Start/Finish with all 3 Sectors
-                            if (progressFrac < 0.08 && r.sectorMask === 7) {
-                                r.sectorMask = 0;
-                                this.updateSectorPillsUI(0);
-                                r.lap++;
-                                this.sound.playBeep(1020, 0.18);
-                                if (r.lap > this.totalLaps) {
-                                    r.finished = true;
-                                    r.finishTime = r.elapsedTime;
-                                    this.completeRace();
-                                } else {
-                                    this.showStatusBanner(`🏁 RUNDE ${r.lap} / ${this.totalLaps}!`);
-                                }
-                            }
-                        }
-
-                        this.sound.updateEngine(r.rpm / r.stats.redline, r.psi / 40, throttle, true, false);
-                    } else if (r.isAi) {
-                        // AI Driver Logic with Oil Hazard reaction
-                        const aiTargetSpeed = (44 + (r.stats.hp / 30)) * this.activeTrack.aiSpeedFactor;
-                        if (r.spinTimer > 0) {
-                            r.spinTimer -= dt;
-                            r.heading += dt * 6;
-                            r.speed *= 0.92;
-                        } else {
-                            r.speed = THREE.MathUtils.lerp(r.speed, aiTargetSpeed, dt * 1.45);
-                        }
-
-                        if (this.activeTrack.isDrag) {
-                            r.z += r.speed * dt;
-                        } else {
-                            const lookAheadIdx = (r.sampleIdx + 6) % totalSamples;
-                            const targetSample = this.trackSamples[lookAheadIdx];
-                            const tx = targetSample.x + targetSample.nx * (r.laneOffset * 0.42);
-                            const tz = targetSample.z + targetSample.nz * (r.laneOffset * 0.42);
-                            const desiredAngle = Math.atan2(tx - r.x, tz - r.z);
-                            let diff = desiredAngle - r.heading;
-                            while (diff > Math.PI) diff -= Math.PI * 2;
-                            while (diff < -Math.PI) diff += Math.PI * 2;
-                            r.heading += diff * Math.min(1, dt * 5.8);
-                            r.x += Math.sin(r.heading) * r.speed * dt;
-                            r.z += Math.cos(r.heading) * r.speed * dt;
-
-                            const prevIdx = r.sampleIdx;
-                            r.sampleIdx = this.findNearestSample(r.x, r.z).idx;
-                            if (prevIdx > totalSamples * 0.85 && r.sampleIdx < totalSamples * 0.15) {
-                                r.lap++;
-                                if (r.lap > this.totalLaps) {
-                                    r.finished = true;
-                                    r.finishTime = r.elapsedTime;
-                                }
-                            }
-
-                            this.oilHazards.forEach(oil => {
-                                if (oil.active && oil.ownerId !== r.id && Math.hypot(r.x - oil.x, r.z - oil.z) < 2.8) {
-                                    oil.active = false;
-                                    this.scene.remove(oil.mesh);
-                                    r.spinTimer = 0.7;
-                                }
-                            });
-                        }
-                    } else {
-                        // Remote Multiplayer Teammate Interpolation
-                        const netState = this.remoteStates[r.id];
-                        if (netState) {
-                            r.x = THREE.MathUtils.lerp(r.x, netState.x, 0.35);
-                            r.z = THREE.MathUtils.lerp(r.z, netState.z, 0.35);
-                            r.heading = netState.heading;
-                            r.speed = netState.speed;
-                            r.lap = netState.lap || 1;
-                            r.sampleIdx = netState.sampleIdx || 0;
-                            r.driftCash = netState.driftCash || 0;
-                            r.isBraking = Boolean(netState.isBraking);
-                            r.mesh.userData.flameMat.opacity = netState.useNos ? 0.9 : 0;
-                        }
-                    }
-
-                    // Update 3D Mesh Transform, Wheels & Brake Lights
-                    r.mesh.position.set(r.x, 0, r.z);
-                    r.mesh.rotation.y = r.heading;
-                    r.mesh.userData.tailMat.color.setHex(r.isBraking ? 0xff0844 : 0xb91c1c);
-                    r.mesh.userData.wheels.forEach(w => {
-                        w.spinGroup.rotation.x += r.speed * dt * 2.4;
-                        if (w.isFront) w.steerPivot.rotation.y = r.steerAngle;
-                    });
-                    if (r.mesh.userData.blowerPulley) {
-                        r.mesh.userData.blowerPulley.rotation.z += dt * (r.rpm * 0.008);
-                    }
-
-                    // Check Drag Finish Distance (402m or 804m)
-                    if (this.activeTrack.isDrag) {
-                        const targetDist = this.activeTrack.dragDistance || 402;
-                        if (r.z >= targetDist && !r.finished) {
-                            r.finished = true;
-                            r.finishTime = r.elapsedTime;
-                            if (r.isPlayer) this.completeRace();
-                        }
-                    }
-                });
-
-                this.broadcastRacePosition();
-                this.updateRaceHUD();
-                this.drawMinimap();
-            }
-
-            findNearestSample(x, z) {
-                let bestIdx = 0;
-                let bestDist = Infinity;
-                for (let i = 0; i < this.trackSamples.length; i++) {
-                    const s = this.trackSamples[i];
-                    const d = Math.hypot(x - s.x, z - s.z);
-                    if (d < bestDist) {
-                        bestDist = d;
-                        bestIdx = i;
-                    }
-                }
-                return { idx: bestIdx, dist: bestDist };
-            }
-
-            updateRaceHUD() {
-                const p = this.playerRacer;
-                if (!p) return;
-
-                const kmh = Math.abs(Math.round(p.speed * 3.6));
-                document.getElementById('hudSpeedKmh').textContent = `${kmh}`;
-                document.getElementById('hudRpmVal').textContent = Math.round(p.rpm).toLocaleString();
-                document.getElementById('hudPsiVal').textContent = `${p.psi.toFixed(1)} PSI`;
-                document.getElementById('hudGearBox').textContent = `${p.gear}`;
-                document.getElementById('hudNosPct').textContent = `${Math.round(p.nosAmount)}%`;
-                document.getElementById('hudNosBar').style.width = `${p.nosAmount}%`;
-                document.getElementById('hudTimeText').textContent = `${p.elapsedTime.toFixed(2)}s`;
-                document.getElementById('hudDriftCashText').textContent = `${p.driftCash.toLocaleString()} PTS (${p.driftCombo.toFixed(1)}x)`;
-
-                if (this.activeTrack.isDrag) {
-                    const targetDist = this.activeTrack.dragDistance || 402;
-                    document.getElementById('hudCounterTitle').textContent = `DISTANZ (${targetDist}M)`;
-                    document.getElementById('hudLapText').textContent = `${Math.min(targetDist, Math.max(0, Math.round(p.z)))}m`;
-                } else {
-                    document.getElementById('hudCounterTitle').textContent = 'RUNDE';
-                    document.getElementById('hudLapText').textContent = `${Math.min(this.totalLaps, p.lap)} / ${this.totalLaps}`;
-                }
-
-                // Update 10-LED Shift Light Array
-                const rpmFrac = p.rpm / p.stats.redline;
-                const leds = document.getElementById('shiftLightBar').children;
-                for (let i = 0; i < 10; i++) {
-                    const active = rpmFrac >= (i + 1) / 10.5;
-                    let col = 'bg-emerald-400';
-                    if (i >= 7) col = 'bg-rose-500';
-                    else if (i >= 4) col = 'bg-amber-400';
-                    leds[i].className = `h-1.5 sm:h-2 rounded-full ${active ? col : 'bg-slate-800'}`;
-                }
-                const shiftBadge = document.getElementById('shiftNowBadge');
-                if (rpmFrac >= 0.91) {
-                    shiftBadge.className = 'px-1.5 py-0.5 rounded bg-rose-600 text-[8px] font-display font-black text-white uppercase shift-light-active';
-                } else {
-                    shiftBadge.className = 'px-1.5 py-0.5 rounded bg-slate-800 text-[8px] font-display font-black text-slate-500 uppercase';
-                }
-
-                const sorted = [...this.racers].sort((a, b) => {
-                    if (this.activeTrack.isDrag) return b.z - a.z;
-                    if (this.gameMode === 'drift') return b.driftCash - a.driftCash;
-                    return (b.lap * 1000 + b.sampleIdx) - (a.lap * 1000 + a.sampleIdx);
-                });
-
-                document.getElementById('hudStandingsList').innerHTML = sorted.map((r, i) => `
-                    <div class="flex items-center justify-between px-1.5 py-0.5 rounded ${r.isPlayer ? 'bg-sky-500/25 border border-sky-400/50 font-bold text-white' : 'text-slate-300'}">
-                        <span class="truncate max-w-[105px]">${i + 1}. ${r.name}</span>
-                        <span class="font-mono-tech text-[9px] text-amber-300">${this.gameMode === 'drift' ? r.driftCash + 'P' : r.stats.carClass + '|' + r.stats.pi}</span>
-                    </div>
-                `).join('');
-            }
-
-            drawMinimap() {
-                const canvas = document.getElementById('minimapCanvas');
-                if (!canvas) return;
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                if (this.trackSamples.length === 0) return;
-                ctx.save();
-                ctx.translate(canvas.width * 0.5, canvas.height * 0.5);
-                const scale = this.activeTrack.isDrag ? 0.12 : 0.13;
-                ctx.scale(scale, scale);
-
-                ctx.strokeStyle = '#334155';
-                ctx.lineWidth = 18;
-                ctx.beginPath();
-                this.trackSamples.forEach((s, idx) => {
-                    if (idx === 0) ctx.moveTo(s.x, -s.z);
-                    else ctx.lineTo(s.x, -s.z);
-                });
-                if (!this.activeTrack.isDrag) ctx.closePath();
-                ctx.stroke();
-
-                this.racers.forEach(r => {
-                    ctx.fillStyle = r.isPlayer ? '#38bdf8' : '#f43f5e';
-                    ctx.beginPath();
-                    ctx.arc(r.x, -r.z, 24, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-                ctx.restore();
-            }
-
-            completeRace() {
-                if (this.raceFinished) return;
-                this.raceFinished = true;
-                this.sound.updateEngine(0, 0, 0, false, false);
-
-                const sorted = [...this.racers].sort((a, b) => {
-                    if (this.activeTrack.isDrag) return b.z - a.z;
-                    if (this.gameMode === 'drift') return b.driftCash - a.driftCash;
-                    return (b.lap * 1000 + b.sampleIdx) - (a.lap * 1000 + a.sampleIdx);
-                });
-                const place = sorted.findIndex(r => r.isPlayer) + 1;
-                const p = this.playerRacer;
-
-                const basePrize = Math.round(this.activeTrack.prize / place);
-                const bonus = p.driftCash + (place === 1 ? 5000 : 1200);
-                this.cash += basePrize + bonus;
-                if (place === 1) this.crates++;
-
-                const trapKmh = Math.round(p.speed * 3.6);
-                document.getElementById('finishTitleText').textContent = place === 1 ? '🏆 PLATZ 1 — SIEG!' : `🏁 PLATZ ${place} ERREICHT!`;
-                document.getElementById('finishSubText').textContent = this.activeTrack.isDrag
-                    ? `${this.activeTrack.dragDistance}m Drag ET: ${p.elapsedTime.toFixed(3)}s @ ${trapKmh} km/h Trap Speed!`
-                    : `Rennzeit: ${p.elapsedTime.toFixed(2)}s • Drift-Score: ${p.driftCash.toLocaleString()} PTS`;
-
-                document.getElementById('finishPrizeCash').textContent = `+$${basePrize.toLocaleString()}`;
-                document.getElementById('finishBonusCash').textContent = `+$${bonus.toLocaleString()}`;
-                document.getElementById('finishCrateDrop').textContent = place === 1 ? '+1 📦 CRATE!' : 'KEIN DROP';
-
-                document.getElementById('finishStandingsContainer').innerHTML = sorted.map((r, idx) => `
-                    <div class="flex items-center justify-between p-2 rounded-lg ${r.isPlayer ? 'bg-sky-500/20 border border-sky-400 text-white font-bold' : 'bg-slate-900 text-slate-300'}">
-                        <span>#${idx + 1} ${r.name} (${r.carSpec.name})</span>
-                        <span class="font-mono-tech text-amber-300">${r.stats.hp} HP &bull; ${r.elapsedTime.toFixed(2)}s</span>
-                    </div>
-                `).join('');
-
-                document.getElementById('finishModal').classList.remove('hidden');
-                document.getElementById('finishModal').classList.add('flex');
-                this.saveToLocalStorage();
-                this.saveProfileToCloud();
-                this.submitScoreToServer(p.elapsedTime, trapKmh, p.driftCash);
-            }
-
-            async submitScoreToServer(timeSec, speedKmh, driftScore) {
-                try {
-                    const st = this.getCarComputedStats(this.selectedCarId);
-                    const payload = {
-                        name: (document.getElementById('playerNameInput').value || 'PILOT').trim(),
-                        carName: st.carSpec.name,
-                        whp: st.hp,
-                        mode: this.activeTrack.isDrag ? 'drag' : (this.gameMode === 'drift' ? 'drift' : 'circuit'),
-                        trackId: this.activeTrack.id,
-                        time: timeSec,
-                        speed: speedKmh,
-                        score: driftScore
-                    };
-                    const res = await fetch('/api/leaderboard', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data.leaderboards) this.serverLeaderboards = data.leaderboards;
-                    }
-                } catch (e) {}
-            }
-
-            async openLeaderboardModal() {
-                document.getElementById('leaderboardModal').classList.remove('hidden');
-                document.getElementById('leaderboardModal').classList.add('flex');
-                try {
-                    const res = await fetch('/api/leaderboard');
-                    if (res.ok) {
-                        this.serverLeaderboards = await res.json();
-                    }
-                } catch (e) {}
-                const lb = this.serverLeaderboards || {
-                    drag: [{ name: 'NovaKing_AT', carName: '2026 Nova Jesko Hyperion X', whp: 1890, time: 6.38, speed: 374 }],
-                    circuit: [{ name: 'WörtherseeGT', trackId: 'woerthersee_tour', carName: '2024 BMW M3 G80', time: 45.20 }]
-                };
-                document.getElementById('leaderboardContent').innerHTML = `
-                    <div class="bg-slate-950 p-3 rounded-2xl border border-amber-500/40 space-y-1.5">
-                        <div class="font-display font-bold text-amber-300 uppercase">🚦 DRAG STRIP REKORDE</div>
-                        ${(lb.drag || []).map((r, i) => `
-                            <div class="flex justify-between border-b border-slate-800/80 py-1">
-                                <span>#${i + 1} <strong>${r.name}</strong> (${r.carName})</span>
-                                <span class="font-mono-tech text-emerald-400">${r.time}s @ ${r.speed}km/h</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <div class="bg-slate-950 p-3 rounded-2xl border border-sky-500/40 space-y-1.5">
-                        <div class="font-display font-bold text-sky-300 uppercase">🏁 CIRCUIT RUNDENREKORDE</div>
-                        ${(lb.circuit || []).map((r, i) => `
-                            <div class="flex justify-between border-b border-slate-800/80 py-1">
-                                <span>#${i + 1} <strong>${r.name}</strong> (${r.carName})</span>
-                                <span class="font-mono-tech text-sky-300">${r.time}s</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            }
-
-            closeLeaderboardModal() {
-                document.getElementById('leaderboardModal').classList.add('hidden');
-                document.getElementById('leaderboardModal').classList.remove('flex');
-            }
-
-            restartRace() {
-                this.launch3DRaceEnvironment(Boolean(this.roomCode));
-            }
-
-            returnToGarage() {
-                this.mode = 'GARAGE';
-                this.sound.updateEngine(0, 0, 0, false, false);
-                document.getElementById('raceHudOverlay').classList.add('hidden');
-                document.getElementById('raceHudOverlay').classList.remove('flex');
-                document.getElementById('finishModal').classList.add('hidden');
-                document.getElementById('finishModal').classList.remove('flex');
-                document.getElementById('christmasTreeOverlay').classList.add('hidden');
-                document.getElementById('christmasTreeOverlay').classList.remove('flex');
-                document.getElementById('garageOverlay').classList.remove('hidden');
-                this.initThreeGarageScene();
-                this.renderGarageUI();
-            }
-
-            // ========================================================================
-            // MAIN 3D RENDER & CAMERA LOOP
-            // ========================================================================
-            animate(now) {
-                requestAnimationFrame((t) => this.animate(t));
-                const dt = Math.min(0.05, (now - this.lastFrameTime) / 1000);
-                this.lastFrameTime = now;
-
-                if (this.mode === 'GARAGE' || this.mode === 'DYNO') {
-                    if (this.mode === 'GARAGE' && !this.isDraggingOrbit) {
-                        this.orbitYaw += dt * 0.22;
-                    }
-                    if (this.mode === 'DYNO') {
-                        this.updateDynoSimulation(dt);
-                    } else if (this.garageRevTimer > 0 && this.garageCarMesh) {
-                        this.garageRevTimer -= dt;
-                        this.garageCarMesh.userData.flameMat.opacity = (Math.random() > 0.3) ? 0.95 : 0.1;
-                        this.garageCarMesh.position.x = (Math.random() - 0.5) * 0.03;
-                    } else if (this.garageCarMesh) {
-                        this.garageCarMesh.userData.flameMat.opacity = 0;
-                        this.garageCarMesh.position.x = 0;
-                    }
-
-                    const cx = Math.sin(this.orbitYaw) * Math.cos(this.orbitPitch) * this.orbitDist;
-                    const cy = Math.sin(this.orbitPitch) * this.orbitDist + 0.65;
-                    const cz = Math.cos(this.orbitYaw) * Math.cos(this.orbitPitch) * this.orbitDist;
-                    this.camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.14);
-                    this.camera.lookAt(0, 0.65, 0);
-                } else {
-                    this.updateRacePhysics(dt);
-
-                    // Update Tire Smoke Particles
-                    for (let i = this.smokeParticles.length - 1; i >= 0; i--) {
-                        const sp = this.smokeParticles[i];
-                        sp.life -= dt;
-                        sp.mesh.position.y += dt * 1.4;
-                        sp.mesh.scale.addScalar(dt * 2.5);
-                        sp.mesh.material.opacity = Math.max(0, sp.life);
-                        if (sp.life <= 0) {
-                            this.scene.remove(sp.mesh);
-                            this.smokeParticles.splice(i, 1);
-                        }
-                    }
-
-                    // Update Guardrail Spark Particles
-                    for (let i = this.sparkParticles.length - 1; i >= 0; i--) {
-                        const sk = this.sparkParticles[i];
-                        sk.life -= dt;
-                        sk.mesh.position.x += sk.vx * dt;
-                        sk.mesh.position.y += sk.vy * dt;
-                        sk.mesh.position.z += sk.vz * dt;
-                        sk.vy -= 14 * dt;
-                        if (sk.life <= 0) {
-                            this.scene.remove(sk.mesh);
-                            this.sparkParticles.splice(i, 1);
-                        }
-                    }
-
-                    if (this.playerRacer) {
-                        const r = this.playerRacer;
-                        const fwdX = Math.sin(r.heading);
-                        const fwdZ = Math.cos(r.heading);
-                        const rightX = Math.cos(r.heading);
-                        const rightZ = -Math.sin(r.heading);
-
-                        if (this.cameraMode === 0) {
-                            const camTarget = new THREE.Vector3(r.x - fwdX * 7.8, 3.1, r.z - fwdZ * 7.8);
-                            this.camera.position.lerp(camTarget, 0.18);
-                            this.camera.lookAt(r.x + fwdX * 6, 0.9, r.z + fwdZ * 6);
-                        } else if (this.cameraMode === 1) {
-                            const camTarget = new THREE.Vector3(r.x - fwdX * 5.2, 1.85, r.z - fwdZ * 5.2);
-                            this.camera.position.lerp(camTarget, 0.25);
-                            this.camera.lookAt(r.x + fwdX * 8, 0.75, r.z + fwdZ * 8);
-                        } else if (this.cameraMode === 2) {
-                            this.camera.position.set(r.x + fwdX * 0.35, 1.18, r.z + fwdZ * 0.35);
-                            this.camera.lookAt(r.x + fwdX * 20, 1.0, r.z + fwdZ * 20);
-                        } else {
-                            const sidePos = new THREE.Vector3(r.x - rightX * 9.2, 2.1, r.z - rightZ * 9.2 + fwdZ * 1.5);
-                            this.camera.position.lerp(sidePos, 0.22);
-                            this.camera.lookAt(r.x + fwdX * 1.5, 0.85, r.z + fwdZ * 1.5);
-                        }
-                    }
-                }
-
-                this.renderer.render(this.scene, this.camera);
-            }
-
-            // ========================================================================
-            // QUAD-LAYER MULTIPLAYER (NATIVE WEBSOCKET /race + INVITE LINK ?room=CODE + PEERJS + CLOUD)
-            // ========================================================================
-            getLocalPlayerId() {
-                return this.wsPlayerId || this.user?.uid || this.localId || (this.localId = 'p_' + Math.random().toString(36).substring(2, 8));
-            }
-
-            async initMultiplayerAndSocket() {
-                // 1. Local BroadcastChannel for instant multi-tab sync
-                try {
-                    this.bc = new BroadcastChannel('nova_racer_3d_mp');
-                    this.bc.onmessage = (ev) => this.handleNetworkPacket(ev.data);
-                } catch (e) {}
-
-                // 2. Connect to Node.js WebSocket Server (/race on Render or Localhost)
-                this.connectNativeWebSocket();
-
-                // 3. Optional Firebase Cloud Fallback
-                try {
-                    if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                        const firebaseConfig = JSON.parse(__firebase_config);
-                        const app = initializeApp(firebaseConfig);
-                        this.auth = getAuth(app);
-                        this.db = getFirestore(app);
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(this.auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(this.auth);
-                        }
-                        this.user = this.auth.currentUser;
-                        await this.loadProfileFromCloud();
-                    }
-                } catch (e) {}
-
-                // 4. Auto-Join Team Room if URL has ?room=CODE or ?code=CODE
-                try {
-                    const params = new URLSearchParams(window.location.search);
-                    const urlRoom = (params.get('room') || params.get('code') || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-                    if (urlRoom && urlRoom.length >= 2) {
-                        document.getElementById('teamCodeInput').value = urlRoom;
-                        setTimeout(() => {
-                            this.joinTeamRoom();
-                            this.showToast(`🔗 Automatisch per Einladungs-Link Raum ${urlRoom} beigetreten!`, 'emerald');
-                        }, 450);
-                    }
-                } catch (e) {}
-
-                this.updateLobbyRosterUI();
-            }
-
-            connectNativeWebSocket() {
-                if (!window.location.host) return;
-                try {
-                    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                    const wsUrl = `${proto}//${window.location.host}/race`;
-                    this.ws = new WebSocket(wsUrl);
-                    const badge = document.getElementById('wsStatusDot');
-
-                    this.ws.onopen = () => {
-                        this.wsConnected = true;
-                        if (badge) {
-                            badge.textContent = '🟢 SERVER LIVE';
-                            badge.className = 'px-1.5 py-0.5 rounded text-[8px] font-mono-tech font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
-                        }
-                        if (this.roomCode) {
-                            this.sendWsJoinOrCreate(this.roomCode);
-                        }
-                    };
-
-                    this.ws.onmessage = (ev) => {
-                        try {
-                            const msg = JSON.parse(ev.data);
-                            this.handleServerWsMessage(msg);
-                        } catch (e) {}
-                    };
-
-                    this.ws.onclose = () => {
-                        this.wsConnected = false;
-                        if (badge) {
-                            badge.textContent = '🟡 P2P MODE';
-                            badge.className = 'px-1.5 py-0.5 rounded text-[8px] font-mono-tech font-bold bg-amber-500/20 text-amber-300';
-                        }
-                        setTimeout(() => this.connectNativeWebSocket(), 4500);
-                    };
-                } catch (e) {}
-            }
-
-            sendWsJoinOrCreate(code) {
-                if (!this.ws || !this.wsConnected) return;
-                const st = this.getCarComputedStats(this.selectedCarId);
-                this.ws.send(JSON.stringify({
-                    type: 'joinOrCreate',
-                    code,
-                    config: {
-                        gameMode: this.gameMode,
-                        trackId: this.selectedTrackId,
-                        laps: this.totalLaps
-                    },
-                    player: {
-                        name: (document.getElementById('playerNameInput').value || 'PILOT').trim(),
-                        carId: this.selectedCarId,
-                        carName: st.carSpec.name,
-                        carClass: st.carClass,
-                        pi: st.pi,
-                        hp: st.hp,
-                        bodyColor: st.cfg.bodyColor,
-                        rimColor: st.cfg.rimColor,
-                        caliperColor: st.cfg.caliperColor,
-                        neonColor: st.cfg.neonColor,
-                        finish: st.cfg.finish,
-                        livery: st.cfg.livery,
-                        rideHeightMm: st.cfg.rideHeightMm,
-                        camberDeg: st.cfg.camberDeg,
-                        parts: st.cfg.parts
-                    }
-                }));
-            }
-
-            handleServerWsMessage(msg) {
-                if (!msg || !msg.type) return;
-                if (msg.type === 'welcome') {
-                    this.wsPlayerId = msg.playerId;
-                    this.updateLobbyRosterUI();
-                } else if (msg.type === 'roomCreated' || msg.type === 'joinedRoom' || msg.type === 'lobby') {
-                    this.roomCode = msg.code || this.roomCode;
-                    if (Array.isArray(msg.players)) {
-                        this.lobbyPlayers = {};
-                        msg.players.forEach(p => {
-                            this.lobbyPlayers[p.id] = p;
-                        });
-                        this.updateLobbyRosterUI();
-                    }
-                    if (msg.config && msg.config.trackId && msg.hostId !== this.getLocalPlayerId()) {
-                        this.selectedTrackId = msg.config.trackId;
-                        if (msg.config.gameMode) this.gameMode = msg.config.gameMode;
-                        this.renderGarageUI();
-                    }
-                } else if (msg.type === 'raceStart') {
-                    if (msg.config) {
-                        if (msg.config.trackId) this.selectedTrackId = msg.config.trackId;
-                        if (msg.config.gameMode) this.gameMode = msg.config.gameMode;
-                        if (msg.config.laps) this.totalLaps = msg.config.laps;
-                    }
-                    if (Array.isArray(msg.players)) {
-                        this.lobbyPlayers = {};
-                        msg.players.forEach(p => { this.lobbyPlayers[p.id] = p; });
-                    }
-                    this.launch3DRaceEnvironment(true);
-                } else if (msg.type === 'playerState' && msg.state) {
-                    this.remoteStates[msg.state.id] = msg.state;
-                } else if (msg.type === 'playerAction') {
-                    if (msg.kind === 'oil') {
-                        this.spawnOilMeshAt(msg.x, msg.z, msg.playerId);
-                    }
-                } else if (msg.type === 'error' && msg.message) {
-                    this.showToast(msg.message, 'rose');
-                }
-            }
-
-            copyInviteLink() {
-                const code = (document.getElementById('teamCodeInput').value || 'NOVA99').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-                document.getElementById('teamCodeInput').value = code;
-                if (!this.roomCode) {
-                    this.hostTeamRoom();
-                }
-                const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${code}`;
-
-                // Native Mobile Share Sheet if available on smartphone, plus clipboard copy
-                if (this.isMobileDevice && navigator.share) {
-                    navigator.share({
-                        title: 'NOVA RACER 3D — Team-Einladung',
-                        text: `Tritt meiner 3D Renn-Lobby (${code}) in Nova Racer 3D bei!`,
-                        url: inviteUrl
-                    }).catch(() => {});
-                }
-
-                const tempInput = document.createElement('input');
-                tempInput.value = inviteUrl;
-                document.body.appendChild(tempInput);
-                tempInput.select();
-                try { document.execCommand('copy'); } catch (e) {}
-                document.body.removeChild(tempInput);
-
-                this.showToast(`🔗 Einladungs-Link kopiert: ?room=${code}`, 'emerald');
-            }
-
-            async saveProfileToCloud() {
-                if (!this.db || !this.user) return;
-                try {
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                    const ref = doc(this.db, 'artifacts', appId, 'users', this.user.uid, 'profile', 'save');
-                    await setDoc(ref, {
-                        cash: this.cash,
-                        crates: this.crates,
-                        ownedCars: this.ownedCars,
-                        selectedCarId: this.selectedCarId
-                    });
-                } catch (e) {}
-            }
-
-            async loadProfileFromCloud() {
-                if (!this.db || !this.user) return;
-                try {
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                    const ref = doc(this.db, 'artifacts', appId, 'users', this.user.uid, 'profile', 'save');
-                    const snap = await getDoc(ref);
-                    if (snap.exists()) {
-                        const d = snap.data();
-                        if (typeof d.cash === 'number') this.cash = Math.max(this.cash, d.cash);
-                        if (typeof d.crates === 'number') this.crates = Math.max(this.crates, d.crates);
-                        if (Array.isArray(d.ownedCars)) {
-                            d.ownedCars.forEach(c => { if (!this.ownedCars.includes(c)) this.ownedCars.push(c); });
-                        }
-                        this.rebuildGarageCarMesh();
-                        this.renderGarageUI();
-                    }
-                } catch (e) {}
-            }
-
-            hostTeamRoom() {
-                const code = (document.getElementById('teamCodeInput').value || 'NOVA99').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-                document.getElementById('teamCodeInput').value = code;
-                this.roomCode = code;
-                this.isHost = true;
-                document.getElementById('mpBadgeText').textContent = `HOST: ${code}`;
-                this.setupRoomSync(code, true);
-                this.showToast(`📡 Team-Lobby ${code} aktiv! Teile den Code oder Einladungs-Link.`, 'emerald');
-            }
-
-            joinTeamRoom() {
-                const code = (document.getElementById('teamCodeInput').value || 'NOVA99').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-                document.getElementById('teamCodeInput').value = code;
-                this.roomCode = code;
-                this.isHost = false;
-                document.getElementById('mpBadgeText').textContent = `TEAM: ${code}`;
-                this.setupRoomSync(code, false);
-                this.showToast(`🔗 Team-Lobby ${code} verbunden!`, 'sky');
-            }
-
-            setupRoomSync(code, asHost) {
-                this.sendWsJoinOrCreate(code);
-                this.broadcastLobbyState();
-
-                // PeerJS WebRTC Fallback
-                if (typeof Peer !== 'undefined') {
-                    try {
-                        if (this.peer) this.peer.destroy();
-                        const peerId = asHost ? `NOVA3D_V4_${code}` : undefined;
-                        this.peer = new Peer(peerId);
-                        this.peer.on('open', () => {
-                            if (!asHost) {
-                                const conn = this.peer.connect(`NOVA3D_V4_${code}`);
-                                conn.on('open', () => {
-                                    this.peerConns.push(conn);
-                                    this.broadcastLobbyState();
-                                });
-                                conn.on('data', (d) => this.handleNetworkPacket(d));
-                            }
-                        });
-                        this.peer.on('connection', (conn) => {
-                            this.peerConns.push(conn);
-                            conn.on('data', (d) => {
-                                this.handleNetworkPacket(d);
-                                this.peerConns.forEach(c => { if (c !== conn && c.open) c.send(d); });
-                            });
-                            setTimeout(() => this.broadcastLobbyState(), 250);
-                        });
-                    } catch (e) {}
-                }
-
-                // Firestore Room Sync
-                if (this.db && this.user) {
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                    const roomRef = doc(this.db, 'artifacts', appId, 'public', 'data', 'rooms', code);
-                    onSnapshot(roomRef, (snap) => {
-                        if (!snap.exists()) return;
-                        const data = snap.data();
-                        if (data.playersJson) {
-                            try {
-                                const parsed = JSON.parse(data.playersJson);
-                                Object.assign(this.lobbyPlayers, parsed);
-                                this.updateLobbyRosterUI();
-                            } catch (e) {}
-                        }
-                        if (data.startRaceTs && data.startRaceTs > (this.lastMpStartTs || 0)) {
-                            this.lastMpStartTs = data.startRaceTs;
-                            if (data.trackId) this.selectedTrackId = data.trackId;
-                            this.launch3DRaceEnvironment(true);
-                        }
-                    }, () => {});
-                }
-            }
-
-            broadcastLobbyState() {
-                const id = this.getLocalPlayerId();
-                const st = this.getCarComputedStats(this.selectedCarId);
-                const info = {
-                    id,
-                    name: (document.getElementById('playerNameInput').value || 'PILOT').trim(),
-                    carId: this.selectedCarId,
-                    carName: st.carSpec.name,
-                    carClass: st.carClass,
-                    pi: st.pi,
-                    hp: st.hp,
-                    bodyColor: st.cfg.bodyColor,
-                    rimColor: st.cfg.rimColor,
-                    caliperColor: st.cfg.caliperColor,
-                    neonColor: st.cfg.neonColor,
-                    finish: st.cfg.finish,
-                    livery: st.cfg.livery,
-                    rideHeightMm: st.cfg.rideHeightMm,
-                    camberDeg: st.cfg.camberDeg,
-                    parts: st.cfg.parts
-                };
-                this.lobbyPlayers[id] = info;
-                this.updateLobbyRosterUI();
-
-                if (!this.roomCode) return;
-
-                if (this.ws && this.wsConnected) {
-                    this.ws.send(JSON.stringify({
-                        type: 'updatePlayer',
-                        player: info
-                    }));
-                    if (this.isHost) {
-                        this.ws.send(JSON.stringify({
-                            type: 'updateConfig',
-                            config: {
-                                gameMode: this.gameMode,
-                                trackId: this.selectedTrackId,
-                                laps: this.totalLaps
-                            }
-                        }));
-                    }
-                }
-
-                const pkt = { type: 'LOBBY_PLAYER', room: this.roomCode, player: info };
-                this.sendNetworkPacket(pkt);
-
-                if (this.db && this.user) {
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                    const roomRef = doc(this.db, 'artifacts', appId, 'public', 'data', 'rooms', this.roomCode);
-                    setDoc(roomRef, { playersJson: JSON.stringify(this.lobbyPlayers), trackId: this.selectedTrackId }, { merge: true }).catch(() => {});
-                }
-            }
-
-            startMultiplayerRace() {
-                if (!this.roomCode) {
-                    this.hostTeamRoom();
-                }
-                const ts = Date.now();
-                this.lastMpStartTs = ts;
-
-                if (this.ws && this.wsConnected) {
-                    this.ws.send(JSON.stringify({
-                        type: 'startRace',
-                        config: {
-                            gameMode: this.gameMode,
-                            trackId: this.selectedTrackId,
-                            laps: this.totalLaps
-                        }
-                    }));
-                }
-
-                this.sendNetworkPacket({ type: 'START_MP_RACE', room: this.roomCode, trackId: this.selectedTrackId, gameMode: this.gameMode, ts });
-
-                if (this.db && this.user) {
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                    const roomRef = doc(this.db, 'artifacts', appId, 'public', 'data', 'rooms', this.roomCode);
-                    setDoc(roomRef, { startRaceTs: ts, trackId: this.selectedTrackId }, { merge: true }).catch(() => {});
-                }
-                this.launch3DRaceEnvironment(true);
-            }
-
-            broadcastRacePosition() {
-                if (!this.roomCode || !this.playerRacer) return;
-                const r = this.playerRacer;
-                const statePayload = {
-                    id: this.getLocalPlayerId(),
-                    x: r.x,
-                    z: r.z,
-                    heading: r.heading,
-                    steerAngle: r.steerAngle,
-                    speed: r.speed,
-                    lap: r.lap,
-                    sampleIdx: r.sampleIdx,
-                    driftCash: r.driftCash,
-                    isDrifting: r.isDrifting,
-                    isBraking: r.isBraking,
-                    useNos: this.isInputActive('nos') && r.nosAmount > 0,
-                    finished: r.finished,
-                    finishTime: r.finishTime
-                };
-
-                if (this.ws && this.wsConnected) {
-                    this.ws.send(JSON.stringify({ type: 'state', state: statePayload }));
-                }
-                this.sendNetworkPacket({ type: 'RACE_POS', room: this.roomCode, ...statePayload });
-            }
-
-            sendNetworkPacket(pkt) {
-                if (this.bc) {
-                    try { this.bc.postMessage(pkt); } catch (e) {}
-                }
-                this.peerConns.forEach(c => {
-                    if (c && c.open) c.send(pkt);
-                });
-            }
-
-            handleNetworkPacket(pkt) {
-                if (!pkt || pkt.room !== this.roomCode) return;
-                if (pkt.type === 'LOBBY_PLAYER') {
-                    this.lobbyPlayers[pkt.player.id] = pkt.player;
-                    this.updateLobbyRosterUI();
-                } else if (pkt.type === 'START_MP_RACE') {
-                    if (pkt.trackId) this.selectedTrackId = pkt.trackId;
-                    if (pkt.gameMode) this.gameMode = pkt.gameMode;
-                    this.launch3DRaceEnvironment(true);
-                } else if (pkt.type === 'RACE_POS') {
-                    this.remoteStates[pkt.id] = pkt;
-                } else if (pkt.type === 'PLAYER_ACTION' && pkt.kind === 'oil') {
-                    this.spawnOilMeshAt(pkt.x, pkt.z, pkt.id);
-                }
-            }
-
-            updateLobbyRosterUI() {
-                const id = this.getLocalPlayerId();
-                if (!this.lobbyPlayers[id]) {
-                    const st = this.getCarComputedStats(this.selectedCarId);
-                    this.lobbyPlayers[id] = { id, name: 'DU', carClass: st.carClass, pi: st.pi, hp: st.hp };
-                }
-                const box = document.getElementById('mpLobbyRoster');
-                if (!box) return;
-                box.innerHTML = Object.values(this.lobbyPlayers).map(p => `
-                    <span class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 font-mono-tech">
-                        ${p.name} [${p.carClass}|${p.pi}]
-                    </span>
-                `).join('');
-            }
-
-            // ========================================================================
-            // EVENT LISTENERS (KEYBOARD, MULTI-TOUCH PEDALS, GYRO & PINCH-TO-ZOOM)
-            // ========================================================================
-            bindEvents() {
-                window.addEventListener('resize', () => {
-                    this.camera.aspect = window.innerWidth / window.innerHeight;
-                    this.camera.updateProjectionMatrix();
-                    this.renderer.setSize(window.innerWidth, window.innerHeight);
-                });
-
-                // 3D Showroom Orbit Dragging + Mobile 2-Finger Pinch-to-Zoom
-                this.canvas.addEventListener('pointerdown', (e) => {
-                    this.isDraggingOrbit = true;
-                    this.lastPointer = { x: e.clientX, y: e.clientY };
-                });
-                window.addEventListener('pointermove', (e) => {
-                    if (!this.isDraggingOrbit) return;
-                    const dx = e.clientX - this.lastPointer.x;
-                    const dy = e.clientY - this.lastPointer.y;
-                    this.lastPointer = { x: e.clientX, y: e.clientY };
-                    this.orbitYaw -= dx * 0.008;
-                    this.orbitPitch = Math.max(0.06, Math.min(1.1, this.orbitPitch + dy * 0.006));
-                });
-                window.addEventListener('pointerup', () => { this.isDraggingOrbit = false; });
-
-                // Mouse Wheel & Mobile Pinch Zoom in Garage
-                this.canvas.addEventListener('wheel', (e) => {
-                    if (this.mode !== 'GARAGE') return;
-                    this.orbitDist = Math.max(4.6, Math.min(11.5, this.orbitDist + e.deltaY * 0.004));
-                }, { passive: true });
-
-                let lastPinchDist = 0;
-                this.canvas.addEventListener('touchstart', (e) => {
-                    if (e.touches.length === 2) {
-                        lastPinchDist = Math.hypot(
-                            e.touches[0].clientX - e.touches[1].clientX,
-                            e.touches[0].clientY - e.touches[1].clientY
-                        );
-                    }
-                }, { passive: true });
-                this.canvas.addEventListener('touchmove', (e) => {
-                    if (this.mode === 'GARAGE' && e.touches.length === 2) {
-                        const d = Math.hypot(
-                            e.touches[0].clientX - e.touches[1].clientX,
-                            e.touches[0].clientY - e.touches[1].clientY
-                        );
-                        if (lastPinchDist > 0) {
-                            const delta = lastPinchDist - d;
-                            this.orbitDist = Math.max(4.6, Math.min(11.5, this.orbitDist + delta * 0.018));
-                        }
-                        lastPinchDist = d;
-                    }
-                }, { passive: true });
-
-                // Smartphone Gyroscope Tilt Steering Listener
-                window.addEventListener('deviceorientation', (e) => {
-                    if (!this.gyroEnabled) return;
-                    const isLandscape = window.innerWidth > window.innerHeight;
-                    const rawTilt = isLandscape ? (e.beta || 0) : (e.gamma || 0);
-                    this.gyroSteerVal = Math.max(-1, Math.min(1, -rawTilt / 26));
-                });
-
-                // Desktop Keyboard Controls
-                window.addEventListener('keydown', (e) => {
-                    if (['INPUT', 'SELECT'].includes(document.activeElement?.tagName)) return;
-                    const k = e.key.toLowerCase();
-                    if (k === 'w' || e.key === 'ArrowUp') {
-                        this.keyState.up = true;
-                        if (this.transmission === 'manual' && e.key === 'ArrowUp') this.manualShift(1);
-                    }
-                    if (k === 's' || e.key === 'ArrowDown') {
-                        this.keyState.down = true;
-                        if (this.transmission === 'manual' && e.key === 'ArrowDown') this.manualShift(-1);
-                    }
-                    if (k === 'a' || e.key === 'ArrowLeft') this.keyState.left = true;
-                    if (k === 'd' || e.key === 'ArrowRight') this.keyState.right = true;
-                    if (e.code === 'Space') this.keyState.space = true;
-                    if (e.key === 'Shift' || k === 'n') this.keyState.nos = true;
-                    if (k === 'e') this.manualShift(1);
-                    if (k === 'q') this.manualShift(-1);
-                    if (k === 'f') this.dropOilHazard();
-                    if (k === 'h') this.triggerHorn();
-                    if (k === 'c' && (this.mode === 'RACE' || this.mode === 'DRAG')) this.cycleCameraMode();
-                    if (k === 'r' && (this.mode === 'RACE' || this.mode === 'DRAG')) this.resetCarOnTrack();
-                });
-
-                window.addEventListener('keyup', (e) => {
-                    const k = e.key.toLowerCase();
-                    if (k === 'w' || e.key === 'ArrowUp') this.keyState.up = false;
-                    if (k === 's' || e.key === 'ArrowDown') this.keyState.down = false;
-                    if (k === 'a' || e.key === 'ArrowLeft') this.keyState.left = false;
-                    if (k === 'd' || e.key === 'ArrowRight') this.keyState.right = false;
-                    if (e.code === 'Space') this.keyState.space = false;
-                    if (e.key === 'Shift' || k === 'n') this.keyState.nos = false;
-                });
-
-                // INDEPENDENT MULTI-TOUCH PEDALS (Bug-Free: Releasing steering never cuts throttle!)
-                const bindMultiTouchPedal = (id, prop) => {
-                    const el = document.getElementById(id);
-                    if (!el) return;
-                    const setPressed = (val, ev) => {
-                        if (ev && ev.cancelable) ev.preventDefault();
-                        this.touchState[prop] = val;
-                        el.classList.toggle('active-touch', val);
-                        if (val) this.sound.init();
-                    };
-                    el.addEventListener('touchstart', (e) => setPressed(true, e), { passive: false });
-                    el.addEventListener('touchend', (e) => setPressed(false, e), { passive: false });
-                    el.addEventListener('touchcancel', (e) => setPressed(false, e), { passive: false });
-                    el.addEventListener('mousedown', (e) => setPressed(true, e));
-                    el.addEventListener('mouseup', (e) => setPressed(false, e));
-                    el.addEventListener('mouseleave', () => setPressed(false));
-                };
-
-                bindMultiTouchPedal('touchGas', 'up');
-                bindMultiTouchPedal('touchBrake', 'down');
-                bindMultiTouchPedal('touchLeft', 'left');
-                bindMultiTouchPedal('touchRight', 'right');
-                bindMultiTouchPedal('touchHandbrake', 'space');
-                bindMultiTouchPedal('touchNos', 'nos');
-            }
-
-            toggleAudio() {
-                this.sound.enabled = !this.sound.enabled;
-                document.getElementById('btnGarageAudio').textContent = this.sound.enabled ? '🔊' : '🔇';
-                this.showToast(this.sound.enabled ? '🔊 Sound aktiviert' : '🔇 Sound stummgeschaltet', 'sky');
-            }
-
-            showToast(msg, color = 'sky') {
-                const container = document.getElementById('toastContainer');
-                const el = document.createElement('div');
-                const borderColors = {
-                    sky: 'border-sky-400 text-sky-200',
-                    emerald: 'border-emerald-400 text-emerald-200',
-                    amber: 'border-amber-400 text-amber-200',
-                    rose: 'border-rose-500 text-rose-200'
-                };
-                el.className = `glass-panel px-3.5 py-1.5 rounded-xl border ${borderColors[color] || borderColors.sky} font-display font-bold text-[11px] shadow-xl transition-all duration-300 text-center`;
-                el.textContent = msg;
-                container.appendChild(el);
-                setTimeout(() => el.remove(), 3200);
-            }
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Nova Racer 3D: Pixel Garage Edition v4.0</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap');
+    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #07090e; font-family: 'Rajdhani', sans-serif; color: #f8fafc; }
+    .font-cyber { font-family: 'Orbitron', sans-serif; }
+    #canvas-container { position: fixed; inset: 0; z-index: 1; }
+    .ui-layer { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
+    .pointer-auto { pointer-events: auto; }
+    .glass { background: rgba(10, 14, 24, 0.84); backdrop-filter: blur(12px); border: 1px solid rgba(56, 189, 248, 0.25); }
+    .glass-dark { background: rgba(5, 7, 12, 0.92); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.12); }
+    .neon-border { box-shadow: 0 0 18px rgba(56, 189, 248, 0.35); }
+    .neon-amber { box-shadow: 0 0 18px rgba(245, 158, 11, 0.4); }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #38bdf8; border-radius: 3px; }
+    .touch-btn { active: scale(0.94); transition: transform 0.08s; }
+    .touch-btn:active { transform: scale(0.92); background: rgba(56, 189, 248, 0.45) !important; }
+  </style>
+</head>
+<body>
+
+  <!-- 3D WebGL Viewport -->
+  <div id="canvas-container"></div>
+
+  <!-- DSGVO Cookie & Access Passwort Gate -->
+  <div id="gate-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden">
+    <div class="glass-dark max-w-md w-full rounded-2xl p-6 border border-cyan-500/40 neon-border">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-cyber uppercase tracking-widest text-cyan-400 px-2 py-1 bg-cyan-950/70 rounded">Nova Security & DSGVO v4.0</span>
+        <span class="text-xs text-slate-400">Persistent Auth</span>
+      </div>
+      <h2 class="text-2xl font-cyber font-black text-white mb-2">WILLKOMMEN IN DER PIXEL GARAGE</h2>
+      <p class="text-sm text-slate-300 mb-4">
+        Wir speichern deinen Spielstand, deine Fahrzeug-Builds, DSGVO-Einstellungen und deine Zugangs-Freischaltung lokal im Browser (<code class="text-cyan-300">localStorage</code>).
+      </p>
+      <div class="mb-4">
+        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Zugangscode / VIP-Passwort (Optional oder &quot;NOVA&quot;)</label>
+        <input id="gate-pass-input" type="password" placeholder="Code eingeben (Standard: NOVA)" value="NOVA"
+          class="w-full bg-slate-900/90 border border-slate-700 focus:border-cyan-400 rounded-lg px-3 py-2 text-white text-sm outline-none" />
+        <p id="gate-error" class="text-xs text-rose-400 mt-1 hidden">Falscher Code! Tipp: Nutze NOVA oder lasse das Feld auf Standard.</p>
+      </div>
+      <label class="flex items-center gap-2 text-xs text-slate-300 mb-5 cursor-pointer">
+        <input id="gate-cookie-check" type="checkbox" checked class="accent-cyan-400 w-4 h-4 rounded" />
+        <span>Ich akzeptiere notwendige Speicher-Cookies (DSGVO-konform) für Savegames &amp; Multiplayer.</span>
+      </label>
+      <button id="gate-submit-btn" class="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 font-cyber font-bold text-sm text-slate-950 tracking-wider shadow-lg">
+        AKZEPTIEREN &amp; STARTEN
+      </button>
+    </div>
+  </div>
+
+  <!-- HAUPT-GARAGE & MENÜ OVERLAY -->
+  <div id="garage-ui" class="ui-layer flex flex-col justify-between p-3 md:p-5">
+    
+    <!-- Top Navigation Bar -->
+    <div class="flex flex-wrap items-center justify-between gap-2 pointer-auto">
+      <div class="glass px-4 py-2 rounded-xl flex items-center gap-3 neon-border">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-cyber font-black text-lg md:text-xl tracking-wider bg-gradient-to-r from-cyan-400 via-sky-300 to-amber-400 bg-clip-text text-transparent">NOVA RACER 3D</span>
+            <span class="text-[10px] font-cyber bg-amber-500/20 text-amber-300 border border-amber-400/40 px-1.5 py-0.5 rounded">v4.0 PIXEL GARAGE</span>
+          </div>
+          <p class="text-xs text-slate-400 hidden sm:block">PBR Showroom • 10-Kategorien Tuning • Wörthersee &amp; P2P Multiplayer</p>
+        </div>
+      </div>
+
+      <!-- Stats & Quick Controls -->
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="glass px-3 py-1.5 rounded-xl flex items-center gap-3">
+          <div>
+            <div class="text-[10px] uppercase text-slate-400">Kontostand</div>
+            <div id="ui-cash" class="font-cyber font-bold text-emerald-400 text-sm md:text-base">$125,000</div>
+          </div>
+          <div class="h-6 w-[1px] bg-slate-700"></div>
+          <div>
+            <div class="text-[10px] uppercase text-slate-400">Leistung / Gewicht</div>
+            <div id="ui-power-badge" class="font-cyber font-bold text-cyan-300 text-sm md:text-base">320 PS • 1180 kg</div>
+          </div>
+          <div class="h-6 w-[1px] bg-slate-700"></div>
+          <div>
+            <div class="text-[10px] uppercase text-slate-400">PI-Rating</div>
+            <div id="ui-pi-badge" class="font-cyber font-bold text-amber-400 text-sm md:text-base">S1 840</div>
+          </div>
+        </div>
+
+        <button id="btn-toggle-mobile" class="glass px-3 py-2 rounded-xl text-xs font-bold hover:border-cyan-400 transition flex items-center gap-1.5">
+          <span>📱</span> <span id="lbl-mobile-mode">Touch: Auto</span>
+        </button>
+        <button id="btn-add-cash" class="glass px-3 py-2 rounded-xl text-xs font-bold text-emerald-300 hover:border-emerald-400 transition" title="Test-Budget aufladen">
+          +$50k Bonus
+        </button>
+      </div>
+    </div>
+
+    <!-- Center Left / Right Panels -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 my-auto max-h-[74vh] pointer-events-none">
+      
+      <!-- Left Column: Fahrzeugwahl, Spielmodus, Strecke & Multiplayer -->
+      <div class="lg:col-span-4 flex flex-col gap-2.5 overflow-y-auto custom-scroll pr-1 pointer-auto max-h-[72vh]">
+        
+        <!-- 1. Fahrzeug-Auswahl -->
+        <div class="glass rounded-xl p-3">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-cyber uppercase tracking-wider text-cyan-400">1. Fahrzeug-Showroom (6 Autos)</span>
+            <span id="car-lock-status" class="text-xs font-bold text-emerald-400">FREIGESCHALTET</span>
+          </div>
+          <div id="car-list" class="grid grid-cols-2 gap-1.5"></div>
+          <button id="btn-buy-car" class="w-full mt-2 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-cyber font-bold text-xs hidden">
+            FAHRZEUG KAUFEN
+          </button>
+        </div>
+
+        <!-- 2. Spielmodus (4 Modi) -->
+        <div class="glass rounded-xl p-3">
+          <div class="text-xs font-cyber uppercase tracking-wider text-cyan-400 mb-2">2. Spielmodus wählen</div>
+          <div id="mode-list" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-1.5"></div>
+        </div>
+
+        <!-- 3. Strecken-Wahl (8 Strecken inkl. Wörthersee) -->
+        <div class="glass rounded-xl p-3">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-cyber uppercase tracking-wider text-cyan-400">3. 3D-Strecke (8 Kurse)</span>
+            <span class="text-[11px] text-amber-300">Inkl. 3D-Leitplanken</span>
+          </div>
+          <div id="track-list" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-40 overflow-y-auto custom-scroll"></div>
+        </div>
+
+        <!-- 4. Multiplayer Lobby & Einladungs-Link -->
+        <div class="glass rounded-xl p-3 border border-indigo-500/30">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-xs font-cyber uppercase tracking-wider text-indigo-300">4. Team-Code &amp; Link Multiplayer</span>
+            <span id="mp-status-dot" class="text-[11px] text-emerald-400 font-bold">● Bereit</span>
+          </div>
+          <div class="flex gap-1.5 mb-2">
+            <input id="mp-room-input" type="text" maxlength="12" placeholder="Raumcode (z.B. NOVA-1)"
+              class="flex-1 bg-slate-900/90 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-cyber uppercase text-white outline-none focus:border-indigo-400" />
+            <button id="btn-mp-join" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-cyber font-bold">
+              VERBINDEN
+            </button>
+            <button id="btn-mp-copy" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-bold" title="Einladungs-Link kopieren">
+              🔗 Link
+            </button>
+          </div>
+          <div id="mp-info-text" class="text-[11px] text-slate-400">
+            Teile den 🔗 Einladungs-Link mit Freunden oder öffne einen zweiten Browser-Tab mit demselben Code.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Center Spacer (damit das 3D-Auto in der Mitte frei drehbar bleibt) -->
+      <div class="hidden lg:flex lg:col-span-3 flex-col justify-end items-center pb-2 pointer-events-none">
+        <div class="glass px-3 py-1.5 rounded-full text-xs text-slate-300 mb-2">
+          🖱️ Ziehen = 3D-Kamera drehen • Komplett-PBR-Lack
+        </div>
+      </div>
+
+      <!-- Right Column: 10-Kategorien Pixel-Garage Tuning, Stance & Live-Dyno -->
+      <div class="lg:col-span-5 flex flex-col gap-2.5 overflow-y-auto custom-scroll pl-1 pointer-auto max-h-[72vh]">
+        
+        <!-- Tabs: Tuning (10 Kategorien) | Stance & Lack | Live-Dyno -->
+        <div class="glass rounded-xl p-3">
+          <div class="flex gap-1.5 mb-3">
+            <button data-tab="parts" class="garage-tab-btn flex-1 py-1.5 rounded-lg font-cyber text-xs font-bold bg-cyan-500 text-slate-950">
+              🔧 10-KAT. TUNING
+            </button>
+            <button data-tab="stance" class="garage-tab-btn flex-1 py-1.5 rounded-lg font-cyber text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700">
+              🎨 STANCE &amp; LACK
+            </button>
+            <button data-tab="dyno" class="garage-tab-btn flex-1 py-1.5 rounded-lg font-cyber text-xs font-bold bg-slate-800 text-amber-300 hover:bg-slate-700">
+              📈 LIVE DYNO
+            </button>
+          </div>
+
+          <!-- TAB 1: 10 Tuning-Kategorien -->
+          <div id="tab-content-parts">
+            <div id="tuning-cat-bar" class="flex gap-1 overflow-x-auto custom-scroll pb-2 mb-2"></div>
+            <div id="tuning-items-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto custom-scroll pr-1"></div>
+          </div>
+
+          <!-- TAB 2: Stance, Fahrwerk-Sliders & PBR-Lack -->
+          <div id="tab-content-stance" class="hidden space-y-3">
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300 font-bold">PBR Karosserie-Lackfarbe</span>
+                <span class="text-cyan-400">Clearcoat Gloss</span>
+              </div>
+              <div id="paint-swatches" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="bg-slate-900/70 p-2.5 rounded-lg border border-slate-800">
+                <div class="flex justify-between text-xs mb-1">
+                  <span>Tieferlegung (Ride Height)</span>
+                  <span id="lbl-ride-height" class="text-cyan-400 font-bold">0 mm</span>
+                </div>
+                <input id="slider-ride-height" type="range" min="-45" max="20" value="0" class="w-full accent-cyan-400" />
+              </div>
+
+              <div class="bg-slate-900/70 p-2.5 rounded-lg border border-slate-800">
+                <div class="flex justify-between text-xs mb-1">
+                  <span>Radsturz (Camber Stance)</span>
+                  <span id="lbl-camber" class="text-cyan-400 font-bold">-2.0°</span>
+                </div>
+                <input id="slider-camber" type="range" min="-12" max="0" step="0.5" value="-2" class="w-full accent-cyan-400" />
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between bg-slate-900/70 p-2.5 rounded-lg border border-slate-800">
+              <div>
+                <div class="text-xs font-bold text-white">Unterboden-Neon (Underglow)</div>
+                <div class="text-[11px] text-slate-400">Leuchtet auf Nacht- und Tunnel-Strecken</div>
+              </div>
+              <input id="picker-neon" type="color" value="#00f2fe" class="w-10 h-8 rounded cursor-pointer bg-transparent" />
+            </div>
+          </div>
+
+          <!-- TAB 3: Live-Dyno Prüfstand -->
+          <div id="tab-content-dyno" class="hidden">
+            <div class="flex items-center justify-between mb-2">
+              <div>
+                <div class="text-xs font-cyber text-amber-400">PIXEL GARAGE DYNAMOMETER v4</div>
+                <div id="dyno-result-text" class="text-xs text-slate-300">Starte einen Lauf für Echtzeit-PS &amp; Drehmomentkurve</div>
+              </div>
+              <button id="btn-run-dyno" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-cyber font-bold text-xs">
+                🔥 DYNO RUN STARTEN
+              </button>
+            </div>
+            <canvas id="dyno-canvas" width="440" height="190" class="w-full bg-slate-950 rounded-lg border border-slate-800"></canvas>
+          </div>
+        </div>
+
+        <!-- Start Race Call-To-Action -->
+        <div class="glass rounded-xl p-3 flex items-center justify-between gap-3 neon-border">
+          <div>
+            <div id="summary-selection" class="text-xs font-bold text-cyan-300">Wörthersee Alpine Tour • Circuit</div>
+            <div class="text-[11px] text-slate-400">Steuerung: WASD / Pfeile • Space = Handbremse • Shift = N2O • E = Öl-Falle</div>
+          </div>
+          <button id="btn-start-race" class="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500 hover:brightness-110 text-slate-950 font-cyber font-black text-sm tracking-wider shadow-xl">
+            🏁 RENNEN STARTEN
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Bottom Status Footer -->
+    <div class="flex justify-between items-center text-[11px] text-slate-400 pointer-auto">
+      <span>Nova Engine WebGL • Durchgängige 3D-Leitplanken &amp; Funkenflug aktiv</span>
+      <span id="footer-online-count">Lobby: Lokal + P2P Ready</span>
+    </div>
+  </div>
+
+  <!-- IN-GAME RACING HUD -->
+  <div id="race-hud" class="ui-layer hidden flex-col justify-between p-3 md:p-5">
+    
+    <!-- Top Race Telemetry -->
+    <div class="flex flex-wrap justify-between items-start gap-2">
+      <div class="glass px-4 py-2 rounded-xl flex items-center gap-4">
+        <div>
+          <div class="text-[10px] uppercase text-slate-400">Position</div>
+          <div id="hud-pos" class="font-cyber font-black text-xl text-amber-400">1 / 4</div>
+        </div>
+        <div class="h-7 w-[1px] bg-slate-700"></div>
+        <div>
+          <div class="text-[10px] uppercase text-slate-400">Runde / Distanz</div>
+          <div id="hud-lap" class="font-cyber font-bold text-base text-white">1 / 3</div>
+        </div>
+        <div class="h-7 w-[1px] bg-slate-700"></div>
+        <div>
+          <div class="text-[10px] uppercase text-slate-400">Zeit</div>
+          <div id="hud-time" class="font-cyber font-bold text-base text-cyan-300">00:00.00</div>
+        </div>
+        <div id="hud-drift-box" class="hidden pl-3 border-l border-slate-700">
+          <div class="text-[10px] uppercase text-amber-300">Drift Score</div>
+          <div id="hud-drift-score" class="font-cyber font-black text-base text-amber-400">0 PTS</div>
+        </div>
+      </div>
+
+      <!-- Center Banner (Countdown / Drag Tree / Alerts) -->
+      <div id="hud-center-banner" class="glass-dark px-6 py-2.5 rounded-2xl border border-amber-400/50 font-cyber font-black text-xl md:text-2xl text-amber-300 tracking-widest hidden">
+        READY...
+      </div>
+
+      <!-- Right Action Buttons -->
+      <div class="flex items-center gap-2 pointer-auto">
+        <button id="btn-gyro-toggle" class="glass px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:border-cyan-400 hidden">
+          🧭 Gyro: AUS
+        </button>
+        <button id="btn-camera-view" class="glass px-3 py-2 rounded-xl text-xs font-bold text-cyan-300 hover:border-cyan-400">
+          🎥 Kamera: Chase
+        </button>
+        <button id="btn-back-garage" class="glass px-3 py-2 rounded-xl text-xs font-bold text-rose-300 hover:border-rose-400">
+          🏠 Werkstatt
+        </button>
+      </div>
+    </div>
+
+    <!-- Bottom Tacho, RPM Bar, N2O & Oil Trap Counter -->
+    <div class="flex flex-col md:flex-row items-center md:items-end justify-between gap-3 mt-auto">
+      
+      <!-- Left: Pickups & Oil Trap Status -->
+      <div class="glass px-4 py-2.5 rounded-xl flex items-center gap-4">
+        <div>
+          <div class="text-[10px] uppercase text-slate-400">N2O Lachgas (Shift)</div>
+          <div class="w-28 h-2.5 bg-slate-800 rounded-full overflow-hidden mt-1">
+            <div id="hud-nos-bar" class="h-full bg-gradient-to-r from-cyan-400 to-blue-500" style="width: 100%"></div>
+          </div>
+        </div>
+        <div>
+          <div class="text-[10px] uppercase text-slate-400">Öl-Fallen (Taste E)</div>
+          <div id="hud-oil-count" class="font-cyber font-bold text-sm text-amber-400">🛢️ x3 bereit</div>
+        </div>
+      </div>
+
+      <!-- Right: Digital Pixel Garage Speedometer & Gear -->
+      <div class="glass-dark px-5 py-3 rounded-2xl border border-cyan-500/40 flex items-center gap-4 neon-border">
+        <div class="text-center">
+          <div class="text-[10px] uppercase text-slate-400">Gang</div>
+          <div id="hud-gear" class="font-cyber font-black text-3xl text-amber-400">1</div>
+        </div>
+        <div class="w-40 sm:w-52">
+          <div class="flex justify-between text-xs mb-1">
+            <span id="hud-rpm-text" class="font-cyber text-slate-300">1200 RPM</span>
+            <span id="hud-shift-light" class="font-cyber font-bold text-rose-500 hidden animate-pulse">SHIFT!</span>
+          </div>
+          <div class="w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
+            <div id="hud-rpm-bar" class="h-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 transition-all duration-75" style="width: 15%"></div>
+          </div>
+          <div class="flex justify-between items-baseline mt-1.5">
+            <span id="hud-speed" class="font-cyber font-black text-3xl text-white">0</span>
+            <span class="text-xs font-cyber text-cyan-400">KM/H</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOBILE MULTI-TOUCH COCKPIT (Automatisch auf Touch-Geräten oder per Toggle) -->
+    <div id="mobile-cockpit" class="hidden justify-between items-end pt-2 pointer-auto">
+      <!-- Links / Rechts Lenkung -->
+      <div class="flex gap-2.5">
+        <button id="touch-left" class="touch-btn glass w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-2xl font-bold border-cyan-400/40">
+          ◀
+        </button>
+        <button id="touch-right" class="touch-btn glass w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-2xl font-bold border-cyan-400/40">
+          ▶
+        </button>
+      </div>
+
+      <!-- Rechts: N2O, Öl-Falle, Bremse/Drift, Gas -->
+      <div class="flex items-end gap-2">
+        <div class="flex flex-col gap-2">
+          <button id="touch-oil" class="touch-btn glass px-3 py-2.5 rounded-xl font-cyber font-bold text-xs text-amber-300 border-amber-400/40">
+            🛢️ ÖL
+          </button>
+          <button id="touch-nos" class="touch-btn glass px-3 py-2.5 rounded-xl font-cyber font-bold text-xs text-cyan-300 border-cyan-400/40">
+            🔥 N2O
+          </button>
+        </div>
+        <button id="touch-brake" class="touch-btn glass w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex flex-col items-center justify-center font-cyber font-bold text-xs text-rose-300 border-rose-500/40">
+          <span>🛑</span>
+          <span>DRIFT</span>
+        </button>
+        <button id="touch-gas" class="touch-btn glass w-20 h-24 sm:w-24 sm:h-28 rounded-2xl flex flex-col items-center justify-center font-cyber font-black text-sm text-emerald-300 border-emerald-400/50 bg-emerald-950/40">
+          <span class="text-xl">⚡</span>
+          <span>GAS</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FINISH MODAL -->
+  <div id="finish-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 hidden">
+    <div class="glass-dark max-w-md w-full rounded-2xl p-6 text-center border border-amber-400/40 neon-amber">
+      <div class="text-xs font-cyber uppercase tracking-widest text-amber-400 mb-1">Rennen beendet</div>
+      <h3 id="finish-title" class="text-3xl font-cyber font-black text-white mb-2">PLATZ 1! 🏆</h3>
+      <p id="finish-details" class="text-sm text-slate-300 mb-4">Zeit: 01:12.40 • Belohnung: +$25,000</p>
+      <div class="flex gap-2">
+        <button id="btn-finish-retry" class="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-cyber font-bold text-xs">
+          🔄 NOCHMAL FAHREN
+        </button>
+        <button id="btn-finish-garage" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-cyber font-bold text-xs">
+          🏠 ZUR WERKSTATT
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /********************************************************************
+     * NOVA RACER 3D: PIXEL GARAGE EDITION v4.0 (COMPLETE SINGLE-FILE)
+     ********************************************************************/
+
+    // --- 1. DATENBANK: 6 FAHRZEUGE, 8 STRECKEN, 4 MODI, 10 TUNING-KATEGORIEN ---
+    const CARS = [
+      { id: 'eg6', name: 'Honda Civic EG6', price: 0, baseHp: 210, weight: 980, color: '#ef4444', length: 4.1, width: 1.78, wing: false },
+      { id: 'rx7', name: 'Mazda RX-7 FD', price: 28000, baseHp: 280, weight: 1220, color: '#f59e0b', length: 4.3, width: 1.82, wing: true },
+      { id: 'r34', name: 'Nissan Skyline R34', price: 55000, baseHp: 340, weight: 1480, color: '#2563eb', length: 4.5, width: 1.86, wing: true },
+      { id: 'supra', name: 'Toyota Supra MK4', price: 62000, baseHp: 350, weight: 1450, color: '#f97316', length: 4.5, width: 1.86, wing: true },
+      { id: 'gt3rs', name: 'Porsche 911 GT3 RS', price: 120000, baseHp: 525, weight: 1380, color: '#10b981', length: 4.55, width: 1.92, wing: true },
+      { id: 'jesko', name: 'Nova Jesko Hyperion X', price: 250000, baseHp: 1280, weight: 1290, color: '#e2e8f0', length: 4.7, width: 2.0, wing: true }
+    ];
+
+    const GAME_MODES = [
+      { id: 'circuit', name: '🏁 Circuit (3 Runden)', desc: 'Rennen gegen 3 KI-Rivalen & P2P' },
+      { id: 'drift', name: '💨 Drift Touge', desc: 'Sammle maximale Querbeschleunigungs-Punkte' },
+      { id: 'drag', name: '🚦 1/4 Mile Drag', desc: 'Christmas-Tree Ampel & Launch Control' },
+      { id: 'timeattack', name: '⏱️ Time Attack', desc: 'Solo-Rekordjagd gegen die Uhr' }
+    ];
+
+    const TRACKS = [
+      { id: 'woerthersee', name: '🇦🇹 Wörthersee Alpine Tour', sky: 0x1e3a8a, ground: 0x14532d, road: 0x1e293b, radiusX: 210, radiusZ: 145, complexity: 2, isDrag: false, water: true },
+      { id: 'sunset', name: '🌴 Sunset Coast Highway', sky: 0x7c2d12, ground: 0x451a03, road: 0x1f2937, radiusX: 220, radiusZ: 130, complexity: 1, isDrag: false },
+      { id: 'neotokyo', name: '🌃 Neo-Tokyo Shuto', sky: 0x090d16, ground: 0x0f172a, road: 0x111827, radiusX: 200, radiusZ: 155, complexity: 3, isDrag: false },
+      { id: 'akina', name: '⛰️ Mount Akina Touge', sky: 0x0f172a, ground: 0x1e293b, road: 0x27272a, radiusX: 185, radiusZ: 150, complexity: 4, isDrag: false },
+      { id: 'novagp', name: '🏎️ Nova GP Circuit', sky: 0x0c4a6e, ground: 0x064e3b, road: 0x1e293b, radiusX: 235, radiusZ: 160, complexity: 2, isDrag: false },
+      { id: 'shibuya', name: '🏮 Shibuya Drift Arena', sky: 0x1e1b4b, ground: 0x090d16, road: 0x18181b, radiusX: 150, radiusZ: 125, complexity: 3, isDrag: false },
+      { id: 'pcrdrag', name: '🚦 PCR Pro 1/4 Mile Drag', sky: 0x111827, ground: 0x1f2937, road: 0x0f172a, radiusX: 400, radiusZ: 20, complexity: 0, isDrag: true },
+      { id: 'airfield', name: '✈️ Airfield Highspeed Strip', sky: 0x1e293b, ground: 0x334155, road: 0x1e293b, radiusX: 500, radiusZ: 25, complexity: 0, isDrag: true }
+    ];
+
+    const TUNING_CATEGORIES = [
+      {
+        id: 'engine', name: '1. Motoren', icon: '⚙️',
+        items: [
+          { id: 'eng_stock', name: 'Serien-Motorblock', hp: 0, weight: 0, price: 0 },
+          { id: 'eng_k20a', name: 'Honda K20A Type-R (9000 RPM)', hp: 110, weight: -25, price: 8500 },
+          { id: 'eng_rb26', name: 'Nissan RB26DETT Inline-6', hp: 240, weight: 15, price: 18000 },
+          { id: 'eng_2jz', name: 'Toyota 2JZ-GTE 3.0L Forged', hp: 330, weight: 20, price: 24000 },
+          { id: 'eng_vr38', name: 'VR38DETT GT-R Nismo Block', hp: 460, weight: 10, price: 38000 },
+          { id: 'eng_f136', name: 'Ferrari F136 4.5L V8 Screamer', hp: 550, weight: -15, price: 54000 },
+          { id: 'eng_spoonv10', name: 'Spoon 5.2L Titanium Formula V10', hp: 720, weight: -40, price: 82000 }
+        ]
+      },
+      {
+        id: 'turbo', name: '2. Turbos', icon: '🐌',
+        items: [
+          { id: 'trb_none', name: 'Sauger / Serie', hp: 0, weight: 0, price: 0 },
+          { id: 'trb_street', name: 'Garrett GTX3582R Street', hp: 95, weight: 8, price: 6500 },
+          { id: 'trb_reddy', name: 'Reddy T88H-38GK Gold Spec', hp: 220, weight: 12, price: 16500 },
+          { id: 'trb_diamond', name: 'Apex Quad-Turbo Billet 42 PSI', hp: 410, weight: 18, price: 34000 }
+        ]
+      },
+      {
+        id: 'exhaust', name: '3. Auspuff', icon: '🔥',
+        items: [
+          { id: 'exh_stock', name: 'Serien-Abgasanlage', hp: 0, weight: 0, price: 0 },
+          { id: 'exh_catback', name: 'Tomei Expreme Ti Titanium', hp: 35, weight: -12, price: 3200 },
+          { id: 'exh_hood', name: 'Side-Exit Flame-Spitter Pipe', hp: 75, weight: -22, price: 7800 }
+        ]
+      },
+      {
+        id: 'ecu', name: '4. ECU', icon: '💻',
+        items: [
+          { id: 'ecu_stock', name: 'Standard-Steuergerät', hp: 0, weight: 0, price: 0 },
+          { id: 'ecu_stage2', name: 'Hondata / Haltech Stage 2 Map', hp: 45, weight: 0, price: 2900 },
+          { id: 'ecu_motec', name: 'MoTeC M150 + 2-Step Anti-Lag', hp: 115, weight: -2, price: 9500 }
+        ]
+      },
+      {
+        id: 'intercooler', name: '5. Kühler', icon: '❄️',
+        items: [
+          { id: 'ic_stock', name: 'OEM Ladeluftkühler', hp: 0, weight: 0, price: 0 },
+          { id: 'ic_fmic', name: 'Mishimoto Monster FMIC', hp: 40, weight: 4, price: 2400 },
+          { id: 'ic_cryo', name: 'CO2 Cryo-Spray Race Core', hp: 85, weight: 2, price: 6200 }
+        ]
+      },
+      {
+        id: 'nos', name: '6. N2O', icon: '🧪',
+        items: [
+          { id: 'nos_stock', name: 'Standard 50HP Dry-Shot', hp: 20, weight: 5, price: 0 },
+          { id: 'nos_wet', name: 'NX 150HP Direct-Port Wet Shot', hp: 70, weight: 8, price: 4500 },
+          { id: 'nos_demon', name: 'Dual-Bottle 300HP Purge Kit', hp: 140, weight: 12, price: 11000 }
+        ]
+      },
+      {
+        id: 'tires', name: '7. Reifen', icon: '🛞',
+        items: [
+          { id: 'tir_street', name: 'Street Sport Compound', hp: 15, weight: 0, price: 0 },
+          { id: 'tir_r888r', name: 'Toyo Proxes R888R Semi-Slick', hp: 55, weight: -6, price: 3800 },
+          { id: 'tir_drag', name: 'Mickey Thompson Wrinkle-Wall', hp: 110, weight: -10, price: 8200 }
+        ]
+      },
+      {
+        id: 'suspension', name: '8. Fahrwerk', icon: '🔩',
+        items: [
+          { id: 'sus_stock', name: 'OEM Stoßdämpfer', hp: 0, weight: 0, price: 0 },
+          { id: 'sus_kw', name: 'KW Variant 3 Gewindefahrwerk', hp: 30, weight: -14, price: 4200 },
+          { id: 'sus_air', name: 'AirLift 3P Performance Track', hp: 60, weight: -18, price: 7900 }
+        ]
+      },
+      {
+        id: 'aero', name: '9. Aero-Kit', icon: '🪶',
+        items: [
+          { id: 'aer_stock', name: 'Serien-Karosserie', hp: 0, weight: 0, price: 0, bigWing: false },
+          { id: 'aer_gt', name: 'APR Carbon Swan-Neck GT Wing', hp: 45, weight: -15, price: 5400, bigWing: true },
+          { id: 'aer_timeattack', name: 'Pandem Widebody + Time-Attack Aero', hp: 95, weight: -45, price: 14500, bigWing: true }
+        ]
+      },
+      {
+        id: 'rims', name: '10. 3D-Felgen', icon: '✨',
+        items: [
+          { id: 'rim_stock', name: 'OEM Silver Alloy', hp: 0, weight: 0, price: 0, rimColor: 0xcbd5e1 },
+          { id: 'rim_te37', name: 'Volk Racing TE37 Bronze', hp: 20, weight: -12, price: 3600, rimColor: 0xb45309 },
+          { id: 'rim_bbs', name: 'BBS LM Championship Gold', hp: 30, weight: -16, price: 5200, rimColor: 0xfacc15 },
+          { id: 'rim_carbon', name: 'Rotiform Carbon Aero Disc', hp: 45, weight: -24, price: 8900, rimColor: 0x38bdf8 }
+        ]
+      }
+    ];
+
+    const PAINT_COLORS = [
+      '#ef4444', '#f97316', '#f59e0b', '#10b981', '#06b6d4',
+      '#2563eb', '#6366f1', '#a855f7', '#ec4899', '#f8fafc', '#1e293b'
+    ];
+
+    // --- 2. SPIELSTAND & STATE ---
+    const defaultSave = {
+      authAccepted: false,
+      cash: 125000,
+      ownedCars: ['eg6'],
+      selectedCar: 'eg6',
+      selectedMode: 'circuit',
+      selectedTrack: 'woerthersee',
+      selectedCat: 'engine',
+      carConfigs: {}
+    };
+
+    CARS.forEach(c => {
+      defaultSave.carConfigs[c.id] = {
+        paint: c.color,
+        neon: '#00f2fe',
+        rideHeight: 0,
+        camber: -2,
+        parts: {
+          engine: 'eng_stock', turbo: 'trb_none', exhaust: 'exh_stock',
+          ecu: 'ecu_stock', intercooler: 'ic_stock', nos: 'nos_stock',
+          tires: 'tir_street', suspension: 'sus_stock', aero: 'aer_stock', rims: 'rim_stock'
+        }
+      };
+    });
+
+    let state = JSON.parse(localStorage.getItem('novaRacerV4Save') || 'null') || defaultSave;
+    // Merge falls neue Autos/Felder dazukamen
+    CARS.forEach(c => {
+      if (!state.carConfigs[c.id]) state.carConfigs[c.id] = JSON.parse(JSON.stringify(defaultSave.carConfigs[c.id]));
+    });
+
+    function saveGame() {
+      localStorage.setItem('novaRacerV4Save', JSON.stringify(state));
+    }
+
+    // --- 3. WEB AUDIO SYNTHESIZER (MOTOR, TURBO, CRASH-FUNKEN) ---
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) audioCtx = new AudioContext();
+      }
+    }
+    function playSparkSound() {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(190 + Math.random() * 140, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.12);
+    }
+    function playBoostTone(freq = 520) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.6, audioCtx.currentTime + 0.18);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.18);
+    }
+
+    // --- 4. STATISTIK-BERECHNUNG FÜR AKTUELLES AUTO ---
+    function getCarStats(carId = state.selectedCar) {
+      const car = CARS.find(c => c.id === carId) || CARS[0];
+      const cfg = state.carConfigs[car.id];
+      let hp = car.baseHp;
+      let weight = car.weight;
+      let bigWing = car.wing;
+      let rimColor = 0xcbd5e1;
+
+      TUNING_CATEGORIES.forEach(cat => {
+        const chosenId = cfg.parts[cat.id];
+        const item = cat.items.find(i => i.id === chosenId) || cat.items[0];
+        hp += item.hp;
+        weight += item.weight;
+        if (item.bigWing !== undefined) bigWing = item.bigWing || car.wing;
+        if (item.rimColor !== undefined) rimColor = item.rimColor;
+      });
+
+      const ratio = hp / (weight / 1000);
+      const pi = Math.min(999, Math.round(400 + ratio * 1.15));
+      const piClass = pi >= 900 ? 'X' : pi >= 800 ? 'S2' : pi >= 700 ? 'S1' : pi >= 600 ? 'A' : 'B';
+      const maxSpeedKmh = Math.min(435, Math.round(210 + Math.sqrt(hp) * 6.4));
+
+      return { car, cfg, hp, weight, pi, piClass, maxSpeedKmh, bigWing, rimColor };
+    }
+
+    // --- 5. THREE.JS 3D-ENGINE: GARAGE & RENNSTRECKE ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x090d16);
+    scene.fog = new THREE.FogExp2(0x090d16, 0.0022);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1500);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    container.appendChild(renderer.domElement);
+
+    // Lichter
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xfffbeb, 1.25);
+    dirLight.position.set(60, 120, 80);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    const worldGroup = new THREE.Group();
+    scene.add(worldGroup);
+
+    let playerMesh = null;
+    let playerWheels = [];
+    let neonLight = null;
+    let cameraMode = 0; // 0 = Chase, 1 = Hood, 2 = Far
+    let inRace = false;
+    let garageOrbitAngle = 0.55;
+    let isDraggingGarage = false;
+    let prevPointerX = 0;
+
+    container.addEventListener('pointerdown', e => {
+      if (!inRace) { isDraggingGarage = true; prevPointerX = e.clientX; }
+    });
+    window.addEventListener('pointermove', e => {
+      if (isDraggingGarage && !inRace) {
+        garageOrbitAngle -= (e.clientX - prevPointerX) * 0.008;
+        prevPointerX = e.clientX;
+      }
+    });
+    window.addEventListener('pointerup', () => { isDraggingGarage = false; });
+
+    // 3D-Fahrzeug-Generator (mit PBR-Clearcoat, Camber, Ride-Height & GT-Wing)
+    function createCarMesh(carData, cfg, stats, isBot = false) {
+      const group = new THREE.Group();
+      const bodyColor = new THREE.Color(isBot ? PAINT_COLORS[Math.floor(Math.random() * PAINT_COLORS.length)] : cfg.paint);
+
+      const paintMat = new THREE.MeshStandardMaterial({
+        color: bodyColor,
+        metalness: 0.72,
+        roughness: 0.18
+      });
+      const darkMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.5, metalness: 0.4 });
+      const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
+
+      const rideOffset = isBot ? 0 : (cfg.rideHeight || 0) * 0.005;
+
+      // Haupt-Chassis
+      const chassisGeo = new THREE.BoxGeometry(carData.width, 0.55, carData.length);
+      const chassis = new THREE.Mesh(chassisGeo, paintMat);
+      chassis.position.y = 0.52 + rideOffset;
+      chassis.castShadow = true;
+      group.add(chassis);
+
+      // Kabine / Dach
+      const cabinGeo = new THREE.BoxGeometry(carData.width * 0.84, 0.46, carData.length * 0.52);
+      const cabin = new THREE.Mesh(cabinGeo, glassMat);
+      cabin.position.set(0, 0.96 + rideOffset, -0.15);
+      group.add(cabin);
+
+      // Front-Splitter
+      const splitter = new THREE.Mesh(new THREE.BoxGeometry(carData.width * 1.04, 0.08, 0.35), darkMat);
+      splitter.position.set(0, 0.28 + rideOffset, carData.length * 0.5);
+      group.add(splitter);
+
+      // Scheinwerfer & Rücklichter
+      const headMat = new THREE.MeshBasicMaterial({ color: 0xe0f2fe });
+      const tailMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e });
+      [-0.6, 0.6].forEach(xPos => {
+        const hl = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.12, 0.08), headMat);
+        hl.position.set(xPos, 0.58 + rideOffset, carData.length * 0.5 + 0.01);
+        group.add(hl);
+
+        const tl = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.12, 0.08), tailMat);
+        tl.position.set(xPos, 0.6 + rideOffset, -carData.length * 0.5 - 0.01);
+        group.add(tl);
+      });
+
+      // GT-Spoiler falls verbaut
+      if (stats.bigWing) {
+        const wingMat = darkMat;
+        const standL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.45, 0.25), wingMat);
+        const standR = standL.clone();
+        standL.position.set(-0.55, 0.95 + rideOffset, -carData.length * 0.44);
+        standR.position.set(0.55, 0.95 + rideOffset, -carData.length * 0.44);
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(carData.width * 1.08, 0.07, 0.38), wingMat);
+        blade.position.set(0, 1.18 + rideOffset, -carData.length * 0.46);
+        group.add(standL, standR, blade);
+      }
+
+      // 4 Räder mit Camber (Radsturz) & 3D-Felgenfarbe
+      const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.28, 20);
+      wheelGeo.rotateZ(Math.PI / 2);
+      const tireMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.85 });
+      const rimMat = new THREE.MeshStandardMaterial({ color: stats.rimColor || 0xcbd5e1, metalness: 0.85, roughness: 0.2 });
+
+      const wheels = [];
+      const wPositions = [
+        [-carData.width * 0.52, 0.38, carData.length * 0.33],
+        [carData.width * 0.52, 0.38, carData.length * 0.33],
+        [-carData.width * 0.52, 0.38, -carData.length * 0.33],
+        [carData.width * 0.52, 0.38, -carData.length * 0.33]
+      ];
+      const camberRad = THREE.MathUtils.degToRad(isBot ? -2 : (cfg.camber || -2));
+
+      wPositions.forEach((pos, idx) => {
+        const wGroup = new THREE.Group();
+        const tire = new THREE.Mesh(wheelGeo, tireMat);
+        const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.3, 12).rotateZ(Math.PI / 2), rimMat);
+        wGroup.add(tire, rim);
+        wGroup.position.set(pos[0], pos[1], pos[2]);
+        wGroup.rotation.z = pos[0] < 0 ? -camberRad : camberRad;
+        group.add(wGroup);
+        wheels.push(wGroup);
+      });
+
+      // Unterboden-Neon
+      if (!isBot) {
+        const nColor = new THREE.Color(cfg.neon || '#00f2fe');
+        neonLight = new THREE.PointLight(nColor, 2.2, 6);
+        neonLight.position.set(0, 0.18, 0);
+        group.add(neonLight);
+      }
+
+      return { group, wheels };
+    }
+
+    // Garage Showroom aufbauen
+    function buildGarageScene() {
+      inRace = false;
+      while (worldGroup.children.length > 0) worldGroup.remove(worldGroup.children[0]);
+
+      scene.background = new THREE.Color(0x070a12);
+      scene.fog = new THREE.FogExp2(0x070a12, 0.025);
+
+      // Reflektierender Showroom-Boden
+      const floor = new THREE.Mesh(
+        new THREE.CircleGeometry(28, 64),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.25, metalness: 0.6 })
+      );
+      floor.rotation.x = -Math.PI / 2;
+      floor.receiveShadow = true;
+      worldGroup.add(floor);
+
+      // Leuchtender Dreh-Ring (Pixel Garage Podium)
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(3.1, 3.35, 64),
+        new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide })
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 0.02;
+      worldGroup.add(ring);
+
+      // Neon-Deckenleuchten
+      for (let i = -1; i <= 1; i++) {
+        const bar = new THREE.Mesh(
+          new THREE.BoxGeometry(1.4, 0.08, 7),
+          new THREE.MeshBasicMaterial({ color: 0xe0f2fe })
+        );
+        bar.position.set(i * 2.6, 5.2, 0);
+        worldGroup.add(bar);
+      }
+
+      const stats = getCarStats();
+      const built = createCarMesh(stats.car, stats.cfg, stats, false);
+      playerMesh = built.group;
+      playerWheels = built.wheels;
+      worldGroup.add(playerMesh);
+    }
+
+    // --- 6. STRECKEN-GENERATOR INKL. DURCHGÄNGIGER 3D-LEITPLANKEN, WÖRTHERSEE & HINDERNISSEN ---
+    let trackPoints = [];
+    let trackWidth = 15;
+    let trackObstacles = []; // Boosts, Pickups, Oil Traps
+    let sparkParticles = [];
+    let botCars = [];
+
+    function getPointOnTrack(t, track) {
+      if (track.isDrag) {
+        return new THREE.Vector3(0, 0, -t * 950);
+      }
+      const angle = t * Math.PI * 2;
+      const wave = Math.sin(angle * track.complexity) * 26;
+      const x = Math.cos(angle) * (track.radiusX + wave);
+      const z = Math.sin(angle) * (track.radiusZ + wave * 0.7);
+      return new THREE.Vector3(x, 0, z);
+    }
+
+    function buildRaceTrack() {
+      while (worldGroup.children.length > 0) worldGroup.remove(worldGroup.children[0]);
+      trackPoints = [];
+      trackObstacles = [];
+      sparkParticles = [];
+      botCars = [];
+
+      const track = TRACKS.find(t => t.id === state.selectedTrack) || TRACKS[0];
+      const isDragMode = state.selectedMode === 'drag' || track.isDrag;
+
+      scene.background = new THREE.Color(track.sky);
+      scene.fog = new THREE.FogExp2(track.sky, 0.0018);
+
+      // Gelände-Boden
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(3000, 3000),
+        new THREE.MeshStandardMaterial({ color: track.ground, roughness: 0.9 })
+      );
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.y = -0.08;
+      worldGroup.add(ground);
+
+      // Spezielles Wörthersee-Feature: Türkisblauer See + Pyramidenkogel-Turm!
+      if (track.id === 'woerthersee') {
+        const lake = new THREE.Mesh(
+          new THREE.CircleGeometry(135, 48),
+          new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.15, metalness: 0.7 })
+        );
+        lake.rotation.x = -Math.PI / 2;
+        lake.position.set(0, -0.02, 0);
+        worldGroup.add(lake);
+
+        // Pyramidenkogel Aussichtsturm in der Mitte
+        const towerBase = new THREE.Mesh(
+          new THREE.CylinderGeometry(3, 8, 55, 12),
+          new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 })
+        );
+        towerBase.position.set(0, 27, 0);
+        const towerTop = new THREE.Mesh(
+          new THREE.CylinderGeometry(6, 3, 10, 16),
+          new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.8 })
+        );
+        towerTop.position.set(0, 56, 0);
+        const spire = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.3, 1.2, 22, 8),
+          new THREE.MeshBasicMaterial({ color: 0xf8fafc })
+        );
+        spire.position.set(0, 70, 0);
+        worldGroup.add(towerBase, towerTop, spire);
+      }
+
+      // Strecken-Segmente & durchgängige 3D-Leitplanken generieren
+      const segments = isDragMode ? 120 : 220;
+      const roadMat = new THREE.MeshStandardMaterial({ color: track.road, roughness: 0.65 });
+      const railMatL = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.6, roughness: 0.3 });
+      const railMatR = new THREE.MeshStandardMaterial({ color: 0xf43f5e, metalness: 0.6, roughness: 0.3 });
+
+      for (let i = 0; i < segments; i++) {
+        const t1 = i / segments;
+        const t2 = ((i + 1) % segments) / segments;
+        const p1 = getPointOnTrack(t1, isDragMode ? TRACKS[6] : track);
+        const p2 = isDragMode && i === segments - 1
+          ? new THREE.Vector3(0, 0, -960)
+          : getPointOnTrack(t2, isDragMode ? TRACKS[6] : track);
+
+        const tangent = new THREE.Vector3().subVectors(p2, p1).normalize();
+        const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+        const segLen = p1.distanceTo(p2) + 0.45;
+
+        trackPoints.push({ pos: p1.clone(), tangent, normal });
+
+        // Asphalt-Segment
+        const segMesh = new THREE.Mesh(new THREE.BoxGeometry(trackWidth * 2, 0.12, segLen), roadMat);
+        segMesh.position.copy(p1).add(p2).multiplyScalar(0.5);
+        segMesh.lookAt(p2);
+        worldGroup.add(segMesh);
+
+        // DURCHGÄNGIGE 3D-LEITPLANKEN (Links & Rechts)
+        const leftPos = p1.clone().addScaledVector(normal, trackWidth + 0.45);
+        const rightPos = p1.clone().addScaledVector(normal, -(trackWidth + 0.45));
+
+        const railGeo = new THREE.BoxGeometry(0.55, 1.15, segLen + 0.2);
+        const railL = new THREE.Mesh(railGeo, i % 2 === 0 ? railMatL : railMatR);
+        railL.position.copy(leftPos);
+        railL.position.y = 0.6;
+        railL.lookAt(leftPos.clone().add(tangent));
+
+        const railR = new THREE.Mesh(railGeo, i % 2 === 0 ? railMatR : railMatL);
+        railR.position.copy(rightPos);
+        railR.position.y = 0.6;
+        railR.lookAt(rightPos.clone().add(tangent));
+
+        worldGroup.add(railL, railR);
+
+        // Interaktive Pickups, Boost-Pads & Öl-Fallen auf der Strecke
+        if (i > 8 && i % 14 === 0) {
+          const laneOffset = (Math.random() - 0.5) * (trackWidth * 1.2);
+          const itemPos = p1.clone().addScaledVector(normal, laneOffset);
+          const typeRoll = i % 42 === 0 ? 'oil' : i % 28 === 0 ? 'nos' : 'boost';
+          spawnTrackObject(typeRoll, itemPos);
+        }
+      }
+
+      // Spieler-Auto platzieren
+      const stats = getCarStats();
+      const built = createCarMesh(stats.car, stats.cfg, stats, false);
+      playerMesh = built.group;
+      playerWheels = built.wheels;
+      const startNode = trackPoints[0];
+      playerMesh.position.copy(startNode.pos);
+      const startYaw = Math.atan2(startNode.tangent.x, startNode.tangent.z);
+      playerMesh.rotation.y = startYaw;
+      worldGroup.add(playerMesh);
+
+      // KI-Bots spawnen (außer in Time Attack)
+      if (state.selectedMode !== 'timeattack') {
+        const botCount = isDragMode ? 1 : 3;
+        for (let b = 0; b < botCount; b++) {
+          const bCar = CARS[(b + 1) % CARS.length];
+          const bBuilt = createCarMesh(bCar, defaultSave.carConfigs[bCar.id], { bigWing: true, rimColor: 0xfacc15 }, true);
+          const sideOffset = (b % 2 === 0 ? 1 : -1) * (3.8 + b * 1.4);
+          bBuilt.group.position.copy(startNode.pos).addScaledVector(startNode.normal, sideOffset);
+          bBuilt.group.rotation.y = startYaw;
+          worldGroup.add(bBuilt.group);
+          botCars.push({
+            mesh: bBuilt.group,
+            trackIdx: 0,
+            progress: 0,
+            speed: 0,
+            maxSpeed: (stats.maxSpeedKmh / 3.6) * (0.86 + b * 0.055),
+            laneOffset: sideOffset,
+            spinTimer: 0
+          });
+        }
+      }
+    }
+
+    function spawnTrackObject(type, position) {
+      let mesh;
+      if (type === 'boost') {
+        mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(3.2, 0.15, 4.5),
+          new THREE.MeshBasicMaterial({ color: 0x00f2fe })
+        );
+        mesh.position.set(position.x, 0.12, position.z);
+      } else if (type === 'nos') {
+        mesh = new THREE.Mesh(
+          new THREE.OctahedronGeometry(0.85, 0),
+          new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+        );
+        mesh.position.set(position.x, 1.0, position.z);
+      } else if (type === 'oil') {
+        mesh = new THREE.Mesh(
+          new THREE.CylinderGeometry(2.1, 2.1, 0.08, 16),
+          new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.05, metalness: 0.9 })
+        );
+        mesh.position.set(position.x, 0.08, position.z);
+      }
+      worldGroup.add(mesh);
+      trackObstacles.push({ type, mesh, active: true });
+    }
+
+    // 3D-Funkenflug bei Leitplanken-Kontakt
+    function emitGuardrailSparks(pos) {
+      playSparkSound();
+      for (let i = 0; i < 8; i++) {
+        const spark = new THREE.Mesh(
+          new THREE.BoxGeometry(0.14, 0.14, 0.14),
+          new THREE.MeshBasicMaterial({ color: Math.random() > 0.4 ? 0xfacc15 : 0xf97316 })
+        );
+        spark.position.copy(pos);
+        spark.position.y += 0.55;
+        worldGroup.add(spark);
+        sparkParticles.push({
+          mesh: spark,
+          vel: new THREE.Vector3((Math.random() - 0.5) * 12, 3 + Math.random() * 6, (Math.random() - 0.5) * 12),
+          life: 0.35
+        });
+      }
+    }
+
+    // --- 7. FAHRPHYSIK, STEUERUNG & MULTI-TOUCH / GYRO ---
+    const keys = { up: false, down: false, left: false, right: false, nos: false };
+    let gyroEnabled = false;
+    let gyroSteerVal = 0;
+
+    let raceState = {
+      speed: 0,
+      yaw: 0,
+      rpm: 1000,
+      gear: 1,
+      nosAmount: 100,
+      oilAmmo: 3,
+      spinTimer: 0,
+      driftScore: 0,
+      lap: 1,
+      totalLaps: 3,
+      checkpointIdx: 0,
+      startTime: 0,
+      countdown: 3,
+      finished: false
+    };
+
+    window.addEventListener('keydown', e => {
+      const k = e.key.toLowerCase();
+      if (k === 'w' || e.key === 'ArrowUp') keys.up = true;
+      if (k === 's' || e.key === 'ArrowDown' || k === ' ') keys.down = true;
+      if (k === 'a' || e.key === 'ArrowLeft') keys.left = true;
+      if (k === 'd' || e.key === 'ArrowRight') keys.right = true;
+      if (e.key === 'Shift') keys.nos = true;
+      if (k === 'e' && inRace) dropPlayerOilTrap();
+    });
+
+    window.addEventListener('keyup', e => {
+      const k = e.key.toLowerCase();
+      if (k === 'w' || e.key === 'ArrowUp') keys.up = false;
+      if (k === 's' || e.key === 'ArrowDown' || k === ' ') keys.down = false;
+      if (k === 'a' || e.key === 'ArrowLeft') keys.left = false;
+      if (k === 'd' || e.key === 'ArrowRight') keys.right = false;
+      if (e.key === 'Shift') keys.nos = false;
+    });
+
+    function dropPlayerOilTrap() {
+      if (!inRace || raceState.oilAmmo <= 0 || !playerMesh) return;
+      raceState.oilAmmo--;
+      document.getElementById('hud-oil-count').textContent = `🛢️ x${raceState.oilAmmo} bereit`;
+      const backPos = playerMesh.position.clone().sub(
+        new THREE.Vector3(Math.sin(raceState.yaw) * 4.2, 0, Math.cos(raceState.yaw) * 4.2)
+      );
+      spawnTrackObject('oil', backPos);
+      playBoostTone(240);
+    }
+
+    // Mobile Touch & Gyroskop Setup
+    let isMobileForced = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || window.innerWidth < 900;
+
+    function updateMobileHudVisibility() {
+      const cockpit = document.getElementById('mobile-cockpit');
+      const gyroBtn = document.getElementById('btn-gyro-toggle');
+      document.getElementById('lbl-mobile-mode').textContent = isMobileForced ? 'Touch: AN' : 'Touch: AUS';
+      if (inRace && isMobileForced) {
+        cockpit.classList.remove('hidden');
+        cockpit.classList.add('flex');
+        gyroBtn.classList.remove('hidden');
+      } else {
+        cockpit.classList.add('hidden');
+        cockpit.classList.remove('flex');
+      }
+    }
+
+    function bindTouchButton(id, keyName) {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      const start = e => { e.preventDefault(); keys[keyName] = true; };
+      const end = e => { e.preventDefault(); keys[keyName] = false; };
+      btn.addEventListener('touchstart', start, { passive: false });
+      btn.addEventListener('touchend', end, { passive: false });
+      btn.addEventListener('mousedown', start);
+      btn.addEventListener('mouseup', end);
+      btn.addEventListener('mouseleave', end);
+    }
+    bindTouchButton('touch-left', 'left');
+    bindTouchButton('touch-right', 'right');
+    bindTouchButton('touch-gas', 'up');
+    bindTouchButton('touch-brake', 'down');
+    bindTouchButton('touch-nos', 'nos');
+    document.getElementById('touch-oil').addEventListener('click', dropPlayerOilTrap);
+
+    window.addEventListener('deviceorientation', e => {
+      if (!gyroEnabled || e.gamma === null) return;
+      gyroSteerVal = THREE.MathUtils.clamp(e.gamma / 30, -1, 1);
+    });
+
+    document.getElementById('btn-gyro-toggle').addEventListener('click', async () => {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try { await DeviceOrientationEvent.requestPermission(); } catch (_) {}
+      }
+      gyroEnabled = !gyroEnabled;
+      document.getElementById('btn-gyro-toggle').textContent = gyroEnabled ? '🧭 Gyro: AN' : '🧭 Gyro: AUS';
+    });
+
+    // --- 8. RENN-START & HAUPTSCHLEIFE ---
+    function startRace() {
+      initAudio();
+      document.getElementById('garage-ui').classList.add('hidden');
+      document.getElementById('finish-modal').classList.add('hidden');
+      const hud = document.getElementById('race-hud');
+      hud.classList.remove('hidden');
+      hud.classList.add('flex');
+
+      const driftBox = document.getElementById('hud-drift-box');
+      if (state.selectedMode === 'drift') driftBox.classList.remove('hidden');
+      else driftBox.classList.add('hidden');
+
+      buildRaceTrack();
+      inRace = true;
+      updateMobileHudVisibility();
+
+      const startNode = trackPoints[0];
+      raceState = {
+        speed: 0,
+        yaw: Math.atan2(startNode.tangent.x, startNode.tangent.z),
+        rpm: 1200,
+        gear: 1,
+        nosAmount: 100,
+        oilAmmo: 3,
+        spinTimer: 0,
+        driftScore: 0,
+        lap: 1,
+        totalLaps: state.selectedMode === 'drag' || TRACKS.find(t => t.id === state.selectedTrack).isDrag ? 1 : 3,
+        checkpointIdx: 0,
+        startTime: performance.now() + 3000,
+        countdown: 3,
+        finished: false
+      };
+
+      document.getElementById('hud-oil-count').textContent = '🛢️ x3 bereit';
+      const banner = document.getElementById('hud-center-banner');
+      banner.classList.remove('hidden');
+      banner.textContent = state.selectedMode === 'drag' ? '🚦 STAGE... 3' : '3...';
+
+      const cdInterval = setInterval(() => {
+        if (!inRace) { clearInterval(cdInterval); return; }
+        raceState.countdown--;
+        if (raceState.countdown > 0) {
+          banner.textContent = state.selectedMode === 'drag' ? `🚦 AMBER... ${raceState.countdown}` : `${raceState.countdown}...`;
+          playBoostTone(360);
+        } else if (raceState.countdown === 0) {
+          banner.textContent = '🟢 GO! GO! GO!';
+          playBoostTone(680);
+        } else {
+          banner.classList.add('hidden');
+          clearInterval(cdInterval);
+        }
+      }, 1000);
+    }
+
+    function updateRacePhysics(dt) {
+      if (!playerMesh || raceState.finished) return;
+      const stats = getCarStats();
+      const maxSpeedMs = stats.maxSpeedKmh / 3.6;
+      const accel = 18 + (stats.hp / stats.weight) * 28;
+
+      // Countdown Launch Control (2-Step Drehzahl im Stand)
+      if (raceState.countdown > 0) {
+        if (keys.up) raceState.rpm = 5500 + Math.sin(performance.now() * 0.04) * 600;
+        else raceState.rpm = 1200;
+        updateHudUI(0);
+        return;
+      }
+
+      // Beschleunigung & Bremse
+      if (keys.up) {
+        let boostMult = 1.0;
+        if (keys.nos && raceState.nosAmount > 0) {
+          boostMult = 1.42;
+          raceState.nosAmount = Math.max(0, raceState.nosAmount - dt * 26);
+        }
+        raceState.speed = Math.min(maxSpeedMs * boostMult, raceState.speed + accel * boostMult * dt);
+      } else if (keys.down) {
+        raceState.speed = Math.max(-15, raceState.speed - 38 * dt);
+      } else {
+        raceState.speed *= (1 - 0.85 * dt);
+      }
+
+      // Lenkung (Tastatur/Touch + Gyroskop)
+      let steerInput = 0;
+      if (keys.left) steerInput += 1;
+      if (keys.right) steerInput -= 1;
+      if (gyroEnabled) steerInput = -gyroSteerVal;
+
+      if (raceState.spinTimer > 0) {
+        raceState.spinTimer -= dt;
+        raceState.yaw += 6.5 * dt;
+      } else if (Math.abs(raceState.speed) > 0.5) {
+        const steerFactor = keys.down ? 2.45 : 1.75;
+        raceState.yaw += steerInput * steerFactor * dt * Math.sign(raceState.speed);
+      }
+
+      // Drift-Punkte im Drift-Modus oder bei Handbremse
+      if (Math.abs(steerInput) > 0.2 && raceState.speed > 16) {
+        raceState.driftScore += Math.round(raceState.speed * (keys.down ? 3.5 : 1.2));
+        document.getElementById('hud-drift-score').textContent = `${raceState.driftScore.toLocaleString()} PTS`;
+      }
+
+      // Position aktualisieren
+      playerMesh.position.x += Math.sin(raceState.yaw) * raceState.speed * dt;
+      playerMesh.position.z += Math.cos(raceState.yaw) * raceState.speed * dt;
+      playerMesh.rotation.y = raceState.yaw + (keys.down ? steerInput * 0.22 : 0);
+
+      // Räder drehen
+      playerWheels.forEach(w => { w.rotation.x += raceState.speed * dt * 1.4; });
+
+      // Nächsten Streckenpunkt suchen & 3D-Leitplanken-Kollision prüfen!
+      let bestDist = Infinity;
+      let bestIdx = raceState.checkpointIdx;
+      for (let i = 0; i < trackPoints.length; i++) {
+        const d = playerMesh.position.distanceTo(trackPoints[i].pos);
+        if (d < bestDist) { bestDist = d; bestIdx = i; }
+      }
+
+      const currentPt = trackPoints[bestIdx];
+      const offsetVec = new THREE.Vector3().subVectors(playerMesh.position, currentPt.pos);
+      const lateralOffset = offsetVec.dot(currentPt.normal);
+
+      // Kollision mit 3D-Leitplanken!
+      if (Math.abs(lateralOffset) > trackWidth - 1.15) {
+        const clamped = Math.sign(lateralOffset) * (trackWidth - 1.25);
+        playerMesh.position.copy(currentPt.pos).addScaledVector(currentPt.normal, clamped);
+        raceState.speed *= 0.84;
+        emitGuardrailSparks(playerMesh.position);
+      }
+
+      // Strecken-Pickups & Öl-Fallen prüfen
+      trackObstacles.forEach(obj => {
+        if (!obj.active) return;
+        if (playerMesh.position.distanceTo(obj.mesh.position) < 2.8) {
+          if (obj.type === 'boost') {
+            raceState.speed = Math.min(maxSpeedMs * 1.35, raceState.speed + 16);
+            playBoostTone(620);
+          } else if (obj.type === 'nos') {
+            raceState.nosAmount = Math.min(100, raceState.nosAmount + 45);
+            obj.active = false;
+            obj.mesh.visible = false;
+            playBoostTone(740);
+          } else if (obj.type === 'oil') {
+            raceState.spinTimer = 0.65;
+            raceState.speed *= 0.65;
+            obj.active = false;
+            obj.mesh.visible = false;
+            playSparkSound();
+          }
+        }
+      });
+
+      // Runden- / Zielfortschritt prüfen
+      const isDrag = state.selectedMode === 'drag' || TRACKS.find(t => t.id === state.selectedTrack).isDrag;
+      if (isDrag) {
+        if (bestIdx >= trackPoints.length - 4) finishRace();
+      } else {
+        if (bestIdx > raceState.checkpointIdx && bestIdx - raceState.checkpointIdx < 35) {
+          raceState.checkpointIdx = bestIdx;
+        } else if (raceState.checkpointIdx > trackPoints.length * 0.8 && bestIdx < 12) {
+          raceState.checkpointIdx = 0;
+          raceState.lap++;
+          if (raceState.lap > raceState.totalLaps) finishRace();
+        }
+      }
+
+      // KI-Bots aktualisieren
+      botCars.forEach(bot => {
+        bot.progress += (bot.maxSpeed * dt) / 4.2;
+        const idx = Math.floor(bot.progress) % trackPoints.length;
+        const nextIdx = (idx + 1) % trackPoints.length;
+        const frac = bot.progress - Math.floor(bot.progress);
+        const p = new THREE.Vector3().lerpVectors(trackPoints[idx].pos, trackPoints[nextIdx].pos, frac);
+        p.addScaledVector(trackPoints[idx].normal, bot.laneOffset);
+        bot.mesh.position.copy(p);
+        bot.mesh.lookAt(trackPoints[nextIdx].pos.clone().addScaledVector(trackPoints[nextIdx].normal, bot.laneOffset));
+      });
+
+      // Funken-Partikel animieren
+      for (let i = sparkParticles.length - 1; i >= 0; i--) {
+        const sp = sparkParticles[i];
+        sp.life -= dt;
+        sp.mesh.position.addScaledVector(sp.vel, dt);
+        if (sp.life <= 0) {
+          worldGroup.remove(sp.mesh);
+          sparkParticles.splice(i, 1);
+        }
+      }
+
+      // Multiplayer Position senden
+      broadcastMultiplayerState();
+
+      // HUD aktualisieren
+      const kmh = Math.round(Math.abs(raceState.speed) * 3.6);
+      updateHudUI(kmh);
+    }
+
+    function updateHudUI(kmh) {
+      const stats = getCarStats();
+      const gearRatios = [0, 62, 115, 175, 240, 310, 440];
+      let g = 1;
+      while (g < 6 && kmh > gearRatios[g]) g++;
+      raceState.gear = g;
+      const minSpd = gearRatios[g - 1] || 0;
+      const maxSpd = gearRatios[g];
+      const gearFrac = THREE.MathUtils.clamp((kmh - minSpd) / (maxSpd - minSpd), 0.12, 0.98);
+      if (raceState.countdown <= 0) raceState.rpm = Math.round(1200 + gearFrac * 7800);
+
+      document.getElementById('hud-speed').textContent = kmh;
+      document.getElementById('hud-gear').textContent = raceState.gear;
+      document.getElementById('hud-rpm-text').textContent = `${raceState.rpm} RPM`;
+      document.getElementById('hud-rpm-bar').style.width = `${Math.min(100, (raceState.rpm / 9000) * 100)}%`;
+      document.getElementById('hud-nos-bar').style.width = `${raceState.nosAmount}%`;
+
+      const shiftLight = document.getElementById('hud-shift-light');
+      if (raceState.rpm > 8100) shiftLight.classList.remove('hidden');
+      else shiftLight.classList.add('hidden');
+
+      document.getElementById('hud-lap').textContent = `${Math.min(raceState.lap, raceState.totalLaps)} / ${raceState.totalLaps}`;
+      const elapsed = Math.max(0, (performance.now() - raceState.startTime) / 1000);
+      const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+      const secs = (elapsed % 60).toFixed(2).padStart(5, '0');
+      document.getElementById('hud-time').textContent = `${mins}:${secs}`;
+    }
+
+    function finishRace() {
+      raceState.finished = true;
+      const elapsed = Math.max(0, (performance.now() - raceState.startTime) / 1000).toFixed(2);
+      const reward = state.selectedMode === 'drift' ? 18000 + Math.round(raceState.driftScore * 0.5) : 25000;
+      state.cash += reward;
+      saveGame();
+      renderTopStats();
+
+      document.getElementById('finish-title').textContent = 'ZIEL ERREICHT! 🏆';
+      document.getElementById('finish-details').textContent = `Zeit: ${elapsed}s • Preisgeld: +$${reward.toLocaleString()}`;
+      document.getElementById('finish-modal').classList.remove('hidden');
+    }
+
+    // --- 9. LIVE-DYNO LEISTUNGSPRÜFSTAND (CANVAS ANIMATION) ---
+    let dynoAnimId = null;
+    function runDynoTest() {
+      initAudio();
+      const canvas = document.getElementById('dyno-canvas');
+      const ctx = canvas.getContext('2d');
+      const stats = getCarStats();
+      if (dynoAnimId) cancelAnimationFrame(dynoAnimId);
+
+      let progress = 0;
+      const peakHp = stats.hp;
+      const peakTorque = Math.round(peakHp * 1.18);
+
+      function drawFrame() {
+        progress += 0.015;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Raster
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.15)';
+        ctx.lineWidth = 1;
+        for (let x = 40; x < canvas.width; x += 50) {
+          ctx.beginPath(); ctx.moveTo(x, 10); ctx.lineTo(x, canvas.height - 25); ctx.stroke();
+        }
+        for (let y = 20; y < canvas.height - 20; y += 35) {
+          ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(canvas.width - 15, y); ctx.stroke();
         }
 
-        window.onload = () => {
-            window.nova3D = new NovaRacer3DApp();
+        // PS-Kurve (Cyan) & Drehmoment-Kurve (Amber)
+        const maxDrawX = 40 + (canvas.width - 60) * Math.min(1, progress);
+
+        // PS-Linie
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (let x = 40; x <= maxDrawX; x += 4) {
+          const t = (x - 40) / (canvas.width - 60);
+          const hpCurve = Math.pow(t, 1.35) * (1 - Math.max(0, (t - 0.88) * 1.8));
+          const y = (canvas.height - 28) - hpCurve * (canvas.height - 55);
+          if (x === 40) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Nm-Linie
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        for (let x = 40; x <= maxDrawX; x += 4) {
+          const t = (x - 40) / (canvas.width - 60);
+          const tqCurve = Math.sin(t * Math.PI * 0.85) * 0.85;
+          const y = (canvas.height - 28) - tqCurve * (canvas.height - 55);
+          if (x === 40) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        const currentRpm = Math.round(1500 + Math.min(1, progress) * 7500);
+        const currentHp = Math.round(peakHp * Math.min(1, progress));
+        document.getElementById('dyno-result-text').textContent =
+          `Messung @ ${currentRpm} RPM: ${currentHp} PS / ${peakTorque} Nm (${stats.piClass} ${stats.pi})`;
+
+        if (progress < 1) {
+          dynoAnimId = requestAnimationFrame(drawFrame);
+        } else {
+          playBoostTone(640);
+        }
+      }
+      drawFrame();
+    }
+
+    // --- 10. ECHTZEIT-MULTIPLAYER (EINLADUNGS-LINK + PEERJS P2P + BROADCASTCHANNEL) ---
+    let roomCode = '';
+    let bcChannel = null;
+    let peerInstance = null;
+    let peerConn = null;
+    const remotePlayers = {};
+
+    function connectMultiplayerRoom(code) {
+      roomCode = code.trim().toUpperCase() || 'NOVA-1';
+      document.getElementById('mp-room-input').value = roomCode;
+
+      // 1. Lokaler BroadcastChannel für direktes Multi-Tab-Testing
+      if (bcChannel) bcChannel.close();
+      if ('BroadcastChannel' in window) {
+        bcChannel = new BroadcastChannel('nova_mp_' + roomCode);
+        bcChannel.onmessage = ev => handleMultiplayerPacket(ev.data);
+      }
+
+      // 2. PeerJS WebRTC P2P für echtes Online-Spielen über Einladungs-Link
+      if (window.Peer) {
+        try {
+          if (peerInstance) peerInstance.destroy();
+          const hostId = 'novaracer-v4-' + roomCode.toLowerCase().replace(/[^a-z0-9]/g, '');
+          peerInstance = new Peer(hostId);
+
+          peerInstance.on('open', () => {
+            document.getElementById('mp-status-dot').textContent = `● Host (${roomCode})`;
+          });
+
+          peerInstance.on('connection', conn => {
+            peerConn = conn;
+            conn.on('data', data => handleMultiplayerPacket(data));
+            document.getElementById('mp-status-dot').textContent = `● 2P Verbunden (${roomCode})`;
+          });
+
+          peerInstance.on('error', err => {
+            if (err.type === 'unavailable-id') {
+              // Host existiert bereits -> als Gast verbinden!
+              peerInstance = new Peer();
+              peerInstance.on('open', () => {
+                peerConn = peerInstance.connect(hostId);
+                peerConn.on('open', () => {
+                  document.getElementById('mp-status-dot').textContent = `● Gast Verbunden (${roomCode})`;
+                });
+                peerConn.on('data', data => handleMultiplayerPacket(data));
+              });
+            }
+          });
+        } catch (_) {}
+      }
+
+      document.getElementById('mp-info-text').textContent =
+        `Aktiv in Raum "${roomCode}". Klicke auf 🔗 Link, um Freunde direkt einzuladen!`;
+    }
+
+    const myPlayerId = 'p_' + Math.random().toString(36).substring(2, 8);
+    function broadcastMultiplayerState() {
+      if (!inRace || !playerMesh || !roomCode) return;
+      const packet = {
+        id: myPlayerId,
+        carId: state.selectedCar,
+        paint: state.carConfigs[state.selectedCar].paint,
+        x: playerMesh.position.x,
+        z: playerMesh.position.z,
+        yaw: playerMesh.rotation.y
+      };
+      if (bcChannel) bcChannel.postMessage(packet);
+      if (peerConn && peerConn.open) peerConn.send(packet);
+    }
+
+    function handleMultiplayerPacket(data) {
+      if (!data || data.id === myPlayerId || !inRace) return;
+      if (!remotePlayers[data.id]) {
+        const cData = CARS.find(c => c.id === data.carId) || CARS[0];
+        const built = createCarMesh(cData, { paint: data.paint }, { bigWing: true, rimColor: 0x38bdf8 }, true);
+        worldGroup.add(built.group);
+        remotePlayers[data.id] = built.group;
+      }
+      const mesh = remotePlayers[data.id];
+      mesh.position.set(data.x, 0, data.z);
+      mesh.rotation.y = data.yaw;
+    }
+
+    // --- 11. UI-RENDERING & EVENT-LISTENER ---
+    function renderTopStats() {
+      const stats = getCarStats();
+      document.getElementById('ui-cash').textContent = `$${state.cash.toLocaleString()}`;
+      document.getElementById('ui-power-badge').textContent = `${stats.hp} PS • ${stats.weight} kg`;
+      document.getElementById('ui-pi-badge').textContent = `${stats.piClass} ${stats.pi}`;
+
+      const trackObj = TRACKS.find(t => t.id === state.selectedTrack) || TRACKS[0];
+      const modeObj = GAME_MODES.find(m => m.id === state.selectedMode) || GAME_MODES[0];
+      document.getElementById('summary-selection').textContent = `${trackObj.name} • ${modeObj.name}`;
+    }
+
+    function renderCarList() {
+      const list = document.getElementById('car-list');
+      list.innerHTML = '';
+      CARS.forEach(c => {
+        const owned = state.ownedCars.includes(c.id);
+        const active = state.selectedCar === c.id;
+        const btn = document.createElement('button');
+        btn.className = `p-2 rounded-lg text-left border transition ${
+          active ? 'bg-cyan-500/20 border-cyan-400 text-white' : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:border-slate-600'
+        }`;
+        btn.innerHTML = `
+          <div class="font-cyber font-bold text-xs truncate">${c.name}</div>
+          <div class="text-[11px] ${owned ? 'text-emerald-400' : 'text-amber-400'}">
+            ${owned ? `${c.baseHp} PS Basis` : `$${c.price.toLocaleString()}`}
+          </div>
+        `;
+        btn.onclick = () => {
+          state.selectedCar = c.id;
+          saveGame();
+          renderAllUI();
+          buildGarageScene();
         };
-    </script>
+        list.appendChild(btn);
+      });
+
+      const currentCar = CARS.find(c => c.id === state.selectedCar);
+      const isOwned = state.ownedCars.includes(currentCar.id);
+      const buyBtn = document.getElementById('btn-buy-car');
+      const lockBadge = document.getElementById('car-lock-status');
+
+      if (isOwned) {
+        buyBtn.classList.add('hidden');
+        lockBadge.textContent = 'IN DEINER GARAGE';
+        lockBadge.className = 'text-xs font-bold text-emerald-400';
+      } else {
+        buyBtn.classList.remove('hidden');
+        buyBtn.textContent = `KAUFEN FÜR $${currentCar.price.toLocaleString()}`;
+        lockBadge.textContent = 'GESPERRT (VORSCHAU)';
+        lockBadge.className = 'text-xs font-bold text-amber-400';
+      }
+    }
+
+    function renderModeAndTrackLists() {
+      const mList = document.getElementById('mode-list');
+      mList.innerHTML = '';
+      GAME_MODES.forEach(m => {
+        const active = state.selectedMode === m.id;
+        const btn = document.createElement('button');
+        btn.className = `p-2 rounded-lg text-left border transition ${
+          active ? 'bg-cyan-500/20 border-cyan-400 text-white' : 'bg-slate-900/70 border-slate-800 text-slate-300'
+        }`;
+        btn.innerHTML = `<div class="font-cyber font-bold text-xs">${m.name}</div><div class="text-[10px] text-slate-400 truncate">${m.desc}</div>`;
+        btn.onclick = () => { state.selectedMode = m.id; saveGame(); renderAllUI(); };
+        mList.appendChild(btn);
+      });
+
+      const tList = document.getElementById('track-list');
+      tList.innerHTML = '';
+      TRACKS.forEach(t => {
+        const active = state.selectedTrack === t.id;
+        const btn = document.createElement('button');
+        btn.className = `p-2 rounded-lg text-left border transition ${
+          active ? 'bg-cyan-500/20 border-cyan-400 text-white' : 'bg-slate-900/70 border-slate-800 text-slate-300'
+        }`;
+        btn.innerHTML = `<div class="font-bold text-xs truncate">${t.name}</div>`;
+        btn.onclick = () => { state.selectedTrack = t.id; saveGame(); renderAllUI(); };
+        tList.appendChild(btn);
+      });
+    }
+
+    function renderTuningSection() {
+      const catBar = document.getElementById('tuning-cat-bar');
+      catBar.innerHTML = '';
+      TUNING_CATEGORIES.forEach(cat => {
+        const active = state.selectedCat === cat.id;
+        const btn = document.createElement('button');
+        btn.className = `px-2.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap border transition ${
+          active ? 'bg-cyan-500 text-slate-950 border-cyan-300' : 'bg-slate-900/80 text-slate-300 border-slate-800'
+        }`;
+        btn.textContent = `${cat.icon} ${cat.name}`;
+        btn.onclick = () => { state.selectedCat = cat.id; renderTuningSection(); };
+        catBar.appendChild(btn);
+      });
+
+      const activeCat = TUNING_CATEGORIES.find(c => c.id === state.selectedCat) || TUNING_CATEGORIES[0];
+      const itemsBox = document.getElementById('tuning-items-list');
+      itemsBox.innerHTML = '';
+      const cfg = state.carConfigs[state.selectedCar];
+
+      activeCat.items.forEach(item => {
+        const equipped = cfg.parts[activeCat.id] === item.id;
+        const card = document.createElement('div');
+        card.className = `p-2.5 rounded-lg border flex flex-col justify-between ${
+          equipped ? 'bg-cyan-950/50 border-cyan-400' : 'bg-slate-900/80 border-slate-800'
+        }`;
+        card.innerHTML = `
+          <div>
+            <div class="font-bold text-xs text-white">${item.name}</div>
+            <div class="text-[11px] text-cyan-300">+${item.hp} PS • ${item.weight >= 0 ? '+' + item.weight : item.weight} kg</div>
+          </div>
+          <button class="mt-2 py-1 rounded text-xs font-cyber font-bold ${
+            equipped ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950'
+          }">
+            ${equipped ? '✓ VERBAUT' : item.price === 0 ? 'SERIE EINBAUEN' : `KAUFEN ($${item.price.toLocaleString()})`}
+          </button>
+        `;
+        card.querySelector('button').onclick = () => {
+          if (equipped) return;
+          if (state.cash < item.price) {
+            alert('Nicht genug Cash! Klicke oben rechts auf +$50k Bonus oder fahre ein Rennen.');
+            return;
+          }
+          state.cash -= item.price;
+          cfg.parts[activeCat.id] = item.id;
+          saveGame();
+          renderAllUI();
+          buildGarageScene();
+        };
+        itemsBox.appendChild(card);
+      });
+    }
+
+    function renderStanceSection() {
+      const cfg = state.carConfigs[state.selectedCar];
+      const swatchBox = document.getElementById('paint-swatches');
+      swatchBox.innerHTML = '';
+      PAINT_COLORS.forEach(hex => {
+        const b = document.createElement('button');
+        b.className = `w-7 h-7 rounded-full border-2 ${cfg.paint === hex ? 'border-white scale-110' : 'border-slate-700'}`;
+        b.style.backgroundColor = hex;
+        b.onclick = () => {
+          cfg.paint = hex;
+          saveGame();
+          renderStanceSection();
+          buildGarageScene();
+        };
+        swatchBox.appendChild(b);
+      });
+
+      const rhSlider = document.getElementById('slider-ride-height');
+      const camSlider = document.getElementById('slider-camber');
+      rhSlider.value = cfg.rideHeight || 0;
+      camSlider.value = cfg.camber || -2;
+      document.getElementById('lbl-ride-height').textContent = `${cfg.rideHeight || 0} mm`;
+      document.getElementById('lbl-camber').textContent = `${cfg.camber || -2}°`;
+    }
+
+    function renderAllUI() {
+      renderTopStats();
+      renderCarList();
+      renderModeAndTrackLists();
+      renderTuningSection();
+      renderStanceSection();
+    }
+
+    // Event Listener für Tabs & Buttons
+    document.querySelectorAll('.garage-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.garage-tab-btn').forEach(b => {
+          b.className = 'garage-tab-btn flex-1 py-1.5 rounded-lg font-cyber text-xs font-bold bg-slate-800 text-slate-300';
+        });
+        btn.className = 'garage-tab-btn flex-1 py-1.5 rounded-lg font-cyber text-xs font-bold bg-cyan-500 text-slate-950';
+
+        const tab = btn.getAttribute('data-tab');
+        document.getElementById('tab-content-parts').classList.toggle('hidden', tab !== 'parts');
+        document.getElementById('tab-content-stance').classList.toggle('hidden', tab !== 'stance');
+        document.getElementById('tab-content-dyno').classList.toggle('hidden', tab !== 'dyno');
+        if (tab === 'dyno') runDynoTest();
+      });
+    });
+
+    document.getElementById('slider-ride-height').addEventListener('input', e => {
+      const cfg = state.carConfigs[state.selectedCar];
+      cfg.rideHeight = Number(e.target.value);
+      document.getElementById('lbl-ride-height').textContent = `${cfg.rideHeight} mm`;
+      saveGame();
+      buildGarageScene();
+    });
+
+    document.getElementById('slider-camber').addEventListener('input', e => {
+      const cfg = state.carConfigs[state.selectedCar];
+      cfg.camber = Number(e.target.value);
+      document.getElementById('lbl-camber').textContent = `${cfg.camber}°`;
+      saveGame();
+      buildGarageScene();
+    });
+
+    document.getElementById('picker-neon').addEventListener('input', e => {
+      state.carConfigs[state.selectedCar].neon = e.target.value;
+      saveGame();
+      buildGarageScene();
+    });
+
+    document.getElementById('btn-buy-car').addEventListener('click', () => {
+      const car = CARS.find(c => c.id === state.selectedCar);
+      if (state.cash < car.price) {
+        alert('Nicht genug Cash! Nutze den +$50k Bonus-Button oben rechts.');
+        return;
+      }
+      state.cash -= car.price;
+      state.ownedCars.push(car.id);
+      saveGame();
+      renderAllUI();
+    });
+
+    document.getElementById('btn-add-cash').addEventListener('click', () => {
+      state.cash += 50000;
+      saveGame();
+      renderTopStats();
+    });
+
+    document.getElementById('btn-toggle-mobile').addEventListener('click', () => {
+      isMobileForced = !isMobileForced;
+      updateMobileHudVisibility();
+    });
+
+    document.getElementById('btn-run-dyno').addEventListener('click', runDynoTest);
+
+    document.getElementById('btn-start-race').addEventListener('click', () => {
+      if (!state.ownedCars.includes(state.selectedCar)) {
+        alert('Bitte kaufe dieses Fahrzeug zuerst oder wähle ein freigeschaltetes Auto!');
+        return;
+      }
+      startRace();
+    });
+
+    function returnToGarage() {
+      inRace = false;
+      document.getElementById('race-hud').classList.add('hidden');
+      document.getElementById('race-hud').classList.remove('flex');
+      document.getElementById('finish-modal').classList.add('hidden');
+      document.getElementById('garage-ui').classList.remove('hidden');
+      buildGarageScene();
+    }
+
+    document.getElementById('btn-back-garage').addEventListener('click', returnToGarage);
+    document.getElementById('btn-finish-garage').addEventListener('click', returnToGarage);
+    document.getElementById('btn-finish-retry').addEventListener('click', startRace);
+
+    document.getElementById('btn-camera-view').addEventListener('click', () => {
+      cameraMode = (cameraMode + 1) % 3;
+      const names = ['Chase', 'Cockpit/Hood', 'Heli-Far'];
+      document.getElementById('btn-camera-view').textContent = `🎥 Kamera: ${names[cameraMode]}`;
+    });
+
+    // Multiplayer-Buttons & Auto-URL-Invite
+    document.getElementById('btn-mp-join').addEventListener('click', () => {
+      connectMultiplayerRoom(document.getElementById('mp-room-input').value || 'NOVA-1');
+    });
+
+    document.getElementById('btn-mp-copy').addEventListener('click', () => {
+      const code = document.getElementById('mp-room-input').value.trim().toUpperCase() || 'NOVA-1';
+      connectMultiplayerRoom(code);
+      const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(code)}`;
+      navigator.clipboard.writeText(inviteUrl).catch(() => {});
+      document.getElementById('mp-info-text').textContent = `✅ Einladungs-Link kopiert: ${inviteUrl}`;
+    });
+
+    // DSGVO & Passwort-Gate prüfen
+    const gateModal = document.getElementById('gate-modal');
+    if (!state.authAccepted) {
+      gateModal.classList.remove('hidden');
+    }
+    document.getElementById('gate-submit-btn').addEventListener('click', () => {
+      const pass = document.getElementById('gate-pass-input').value.trim().toUpperCase();
+      if (pass !== '' && pass !== 'NOVA' && pass !== 'ADMIN' && pass !== 'VIP') {
+        document.getElementById('gate-error').classList.remove('hidden');
+        return;
+      }
+      state.authAccepted = true;
+      saveGame();
+      gateModal.classList.add('hidden');
+      initAudio();
+    });
+
+    // Prüfen ob ?room=CODE in der URL übergeben wurde
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('room')) {
+      connectMultiplayerRoom(urlParams.get('room'));
+    } else {
+      connectMultiplayerRoom('NOVA-1');
+    }
+
+    // --- 12. RENDER-LOOP ---
+    let lastFrameTime = performance.now();
+    function animate(now) {
+      requestAnimationFrame(animate);
+      const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
+      lastFrameTime = now;
+
+      if (!inRace) {
+        if (!isDraggingGarage) garageOrbitAngle += dt * 0.35;
+        camera.position.set(
+          Math.sin(garageOrbitAngle) * 6.8,
+          2.35,
+          Math.cos(garageOrbitAngle) * 6.8
+        );
+        camera.lookAt(0, 0.65, 0);
+      } else if (playerMesh) {
+        updateRacePhysics(dt);
+        const dist = cameraMode === 0 ? 7.2 : cameraMode === 1 ? -0.4 : 12.5;
+        const height = cameraMode === 0 ? 2.6 : cameraMode === 1 ? 1.35 : 4.8;
+        const targetCamPos = new THREE.Vector3(
+          playerMesh.position.x - Math.sin(raceState.yaw) * dist,
+          playerMesh.position.y + height,
+          playerMesh.position.z - Math.cos(raceState.yaw) * dist
+        );
+        camera.position.lerp(targetCamPos, 0.18);
+        const lookAhead = new THREE.Vector3(
+          playerMesh.position.x + Math.sin(raceState.yaw) * 8,
+          playerMesh.position.y + 0.8,
+          playerMesh.position.z + Math.cos(raceState.yaw) * 8
+        );
+        camera.lookAt(lookAhead);
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      updateMobileHudVisibility();
+    });
+
+    // Initialisierung starten
+    renderAllUI();
+    buildGarageScene();
+    updateMobileHudVisibility();
+    requestAnimationFrame(animate);
+  </script>
 </body>
 </html>
