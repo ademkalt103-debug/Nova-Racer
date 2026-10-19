@@ -3,27 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Nova Racer 3D: Pixel Garage Edition v4.0</title>
+  <title>Nova Racer 3D: Ultimate 216-Car Edition v5.0</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap');
     * { box-sizing: border-box; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
-    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #07090e; font-family: 'Rajdhani', sans-serif; color: #f8fafc; }
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #06080f; font-family: 'Rajdhani', sans-serif; color: #f8fafc; }
     .font-cyber { font-family: 'Orbitron', sans-serif; }
     #canvas-container { position: fixed; inset: 0; z-index: 1; }
     .ui-layer { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
     .pointer-auto { pointer-events: auto; }
-    .glass { background: rgba(10, 14, 24, 0.84); backdrop-filter: blur(12px); border: 1px solid rgba(56, 189, 248, 0.25); }
-    .glass-dark { background: rgba(5, 7, 12, 0.92); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.12); }
-    .neon-border { box-shadow: 0 0 18px rgba(56, 189, 248, 0.35); }
-    .neon-amber { box-shadow: 0 0 18px rgba(245, 158, 11, 0.4); }
+    .glass { background: rgba(9, 13, 24, 0.86); backdrop-filter: blur(12px); border: 1px solid rgba(56, 189, 248, 0.28); }
+    .glass-dark { background: rgba(4, 6, 12, 0.94); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.14); }
+    .neon-border { box-shadow: 0 0 20px rgba(56, 189, 248, 0.32); }
+    .neon-amber { box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
     .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
-    .custom-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+    .custom-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.65); }
     .custom-scroll::-webkit-scrollbar-thumb { background: #38bdf8; border-radius: 3px; }
-    .touch-btn { active: scale(0.94); transition: transform 0.08s; }
     .touch-btn:active { transform: scale(0.92); background: rgba(56, 189, 248, 0.45) !important; }
+    @keyframes flashScreen { 0% { opacity: 0.95; } 100% { opacity: 0; } }
+    .blitzer-flash { animation: flashScreen 0.45s ease-out forwards; }
   </style>
 </head>
 <body>
@@ -31,196 +32,284 @@
   <!-- 3D WebGL Viewport -->
   <div id="canvas-container"></div>
 
-  <!-- DSGVO Cookie & Access Passwort Gate -->
+  <!-- Blitzer Foto Flash Overlay -->
+  <div id="blitzer-overlay" class="fixed inset-0 z-30 bg-white pointer-events-none hidden"></div>
+  <div id="blitzer-toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-40 glass-dark px-5 py-3 rounded-2xl border-2 border-rose-500 text-center hidden pointer-events-none">
+    <div class="text-xs font-cyber text-rose-400 uppercase tracking-widest">📸 RADARFALLE AUSGELÖST!</div>
+    <div id="blitzer-text" class="text-lg font-cyber font-black text-white">312 KM/H GEBLITZT!</div>
+    <div id="blitzer-sub" class="text-xs text-emerald-400 font-bold">Most-Wanted Speed-Bonus: +$3,500</div>
+  </div>
+
+  <!-- Mystery Crate Toast -->
+  <div id="crate-toast" class="fixed top-24 left-1/2 -translate-x-1/2 z-50 glass-dark px-6 py-4 rounded-2xl border-2 border-amber-400 text-center hidden pointer-events-none neon-amber">
+    <div class="text-xs font-cyber text-amber-300 uppercase tracking-widest">🎰 GLÜCKS-KISTE GEÖFFNET!</div>
+    <div id="crate-title" class="text-xl font-cyber font-black text-white mt-1">JACKPOT!</div>
+    <div id="crate-sub" class="text-xs text-cyan-300 font-bold mt-0.5">+ $100,000</div>
+  </div>
+
+  <!-- DSGVO & Access Gate -->
   <div id="gate-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 hidden">
     <div class="glass-dark max-w-md w-full rounded-2xl p-6 border border-cyan-500/40 neon-border">
-      <div class="flex items-center justify-between mb-3">
-        <span class="text-xs font-cyber uppercase tracking-widest text-cyan-400 px-2 py-1 bg-cyan-950/70 rounded">Nova Security & DSGVO v4.0</span>
-        <span class="text-xs text-slate-400">Persistent Auth</span>
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-cyber uppercase tracking-widest text-cyan-400 px-2 py-1 bg-cyan-950/70 rounded">Nova Security &amp; DSGVO v5.0</span>
+        <span class="text-xs text-amber-300 font-bold">216 Cars Ready</span>
       </div>
-      <h2 class="text-2xl font-cyber font-black text-white mb-2">WILLKOMMEN IN DER PIXEL GARAGE</h2>
+      <h2 class="text-2xl font-cyber font-black text-white mb-2">NOVA RACER 3D: ULTIMATE</h2>
       <p class="text-sm text-slate-300 mb-4">
-        Wir speichern deinen Spielstand, deine Fahrzeug-Builds, DSGVO-Einstellungen und deine Zugangs-Freischaltung lokal im Browser (<code class="text-cyan-300">localStorage</code>).
+        Speichert deine 216-Auto-Sammlung, RS6/GT3-Tuning-Setups und Rekorde lokal im Browser (<code class="text-cyan-300">localStorage</code>).
       </p>
       <div class="mb-4">
-        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Zugangscode / VIP-Passwort (Optional oder &quot;NOVA&quot;)</label>
-        <input id="gate-pass-input" type="password" placeholder="Code eingeben (Standard: NOVA)" value="NOVA"
+        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">VIP-Zugangscode (Standard: NOVA)</label>
+        <input id="gate-pass-input" type="password" value="NOVA"
           class="w-full bg-slate-900/90 border border-slate-700 focus:border-cyan-400 rounded-lg px-3 py-2 text-white text-sm outline-none" />
-        <p id="gate-error" class="text-xs text-rose-400 mt-1 hidden">Falscher Code! Tipp: Nutze NOVA oder lasse das Feld auf Standard.</p>
+        <p id="gate-error" class="text-xs text-rose-400 mt-1 hidden">Falscher Code! Nutze NOVA.</p>
       </div>
       <label class="flex items-center gap-2 text-xs text-slate-300 mb-5 cursor-pointer">
         <input id="gate-cookie-check" type="checkbox" checked class="accent-cyan-400 w-4 h-4 rounded" />
-        <span>Ich akzeptiere notwendige Speicher-Cookies (DSGVO-konform) für Savegames &amp; Multiplayer.</span>
+        <span>Notwendige Speicher-Cookies für Savegames &amp; P2P-Multiplayer akzeptieren.</span>
       </label>
       <button id="gate-submit-btn" class="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 font-cyber font-bold text-sm text-slate-950 tracking-wider shadow-lg">
-        AKZEPTIEREN &amp; STARTEN
+        GARAGE BETRETEN
       </button>
     </div>
   </div>
 
-  <!-- HAUPT-GARAGE & MENÜ OVERLAY -->
-  <div id="garage-ui" class="ui-layer flex flex-col justify-between p-3 md:p-5">
-    
-    <!-- Top Navigation Bar -->
-    <div class="flex flex-wrap items-center justify-between gap-2 pointer-auto">
-      <div class="glass px-4 py-2 rounded-xl flex items-center gap-3 neon-border">
+  <!-- AUTOHAUS / 216-CARS DEALERSHIP MODAL -->
+  <div id="dealer-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 md:p-6 hidden">
+    <div class="glass-dark max-w-5xl w-full h-[86vh] rounded-2xl p-4 md:p-6 border border-cyan-400/40 flex flex-col neon-border">
+      <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
         <div>
-          <div class="flex items-center gap-2">
-            <span class="font-cyber font-black text-lg md:text-xl tracking-wider bg-gradient-to-r from-cyan-400 via-sky-300 to-amber-400 bg-clip-text text-transparent">NOVA RACER 3D</span>
-            <span class="text-[10px] font-cyber bg-amber-500/20 text-amber-300 border border-amber-400/40 px-1.5 py-0.5 rounded">v4.0 PIXEL GARAGE</span>
+          <span class="text-xs font-cyber uppercase text-cyan-400">MEGA CAR DEALERSHIP &amp; SAMMLUNG</span>
+          <h2 class="text-xl md:text-2xl font-cyber font-black text-white">216 FAHRZEUGE KATALOG</h2>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-700">
+            <span class="text-xs text-slate-400">Sammlung:</span>
+            <span id="dealer-owned-count" class="font-cyber font-bold text-cyan-300 text-sm ml-1">2 / 216</span>
           </div>
-          <p class="text-xs text-slate-400 hidden sm:block">PBR Showroom • 10-Kategorien Tuning • Wörthersee &amp; P2P Multiplayer</p>
+          <div class="bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-700">
+            <span class="text-xs text-slate-400">Cash:</span>
+            <span id="dealer-cash" class="font-cyber font-bold text-emerald-400 text-sm ml-1">$185,000</span>
+          </div>
+          <button id="btn-close-dealer" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 font-cyber font-bold text-xs text-white">
+            ✕ SCHLIESSEN
+          </button>
         </div>
       </div>
 
-      <!-- Stats & Quick Controls -->
-      <div class="flex flex-wrap items-center gap-2">
+      <!-- Suche & Filter -->
+      <div class="flex flex-wrap items-center gap-2 my-3">
+        <input id="dealer-search" type="text" placeholder="🔍 Auto suchen (z.B. RS6, GT3 RS, M3 Touring, Supra, Jesko, Multipla)..."
+          class="flex-1 min-w-[220px] bg-slate-900 border border-slate-700 focus:border-cyan-400 rounded-xl px-3.5 py-2 text-sm text-white outline-none" />
+        <select id="dealer-filter-brand" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 outline-none">
+          <option value="ALL">Alle Marken / Klassen (216)</option>
+          <option value="OWNED">★ Nur Meine Garage</option>
+          <option value="Audi">Audi Sport (RS6 / R8 / Quattro)</option>
+          <option value="Porsche">Porsche (GT3 RS / 918 / Turbo)</option>
+          <option value="BMW">BMW M-GmbH (M3 Touring / M5 CS)</option>
+          <option value="Mercedes">Mercedes-AMG &amp; Brabus</option>
+          <option value="JDM">JDM Legends (GTR / Supra / RX-7)</option>
+          <option value="Hyper">Hypercars (Jesko / Bugatti / Pagani)</option>
+          <option value="Supercar">Supercars (Ferrari / Lambo / McLaren)</option>
+          <option value="Muscle">US Muscle &amp; V8</option>
+          <option value="Euro">Euro Hot-Hatch &amp; Track</option>
+          <option value="SUV">Performance SUVs &amp; Offroad</option>
+          <option value="Cult">🔥 Fun, Meme &amp; Kult-Swaps</option>
+        </select>
+        <select id="dealer-sort" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-200 outline-none">
+          <option value="popular">Sortierung: Highlights zuerst</option>
+          <option value="price_asc">Preis: Aufsteigend</option>
+          <option value="price_desc">Preis: Absteigend</option>
+          <option value="hp_desc">Leistung: Höchste PS</option>
+        </select>
+      </div>
+
+      <!-- Grid der 216 Autos -->
+      <div id="dealer-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 overflow-y-auto custom-scroll pr-1 flex-1"></div>
+    </div>
+  </div>
+
+  <!-- HAUPT-WERKSTATT & GARAGE OVERLAY -->
+  <div id="garage-ui" class="ui-layer flex flex-col justify-between p-2.5 md:p-4">
+    
+    <!-- Top Bar -->
+    <div class="flex flex-wrap items-center justify-between gap-2 pointer-auto">
+      <div class="glass px-3.5 py-2 rounded-xl flex items-center gap-3 neon-border">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-cyber font-black text-base md:text-xl tracking-wider bg-gradient-to-r from-cyan-400 via-sky-300 to-amber-400 bg-clip-text text-transparent">NOVA RACER 3D</span>
+            <span class="text-[10px] font-cyber bg-amber-500/20 text-amber-300 border border-amber-400/40 px-1.5 py-0.5 rounded">v5.0 • 216 CARS</span>
+          </div>
+          <p id="ui-active-car-sub" class="text-xs text-cyan-300 font-bold">Aktuell: Audi RS6 Avant C8 Performance</p>
+        </div>
+      </div>
+
+      <!-- Kontostand, Leistung, Mystery Crate & Quick Buttons -->
+      <div class="flex flex-wrap items-center gap-1.5">
         <div class="glass px-3 py-1.5 rounded-xl flex items-center gap-3">
           <div>
-            <div class="text-[10px] uppercase text-slate-400">Kontostand</div>
-            <div id="ui-cash" class="font-cyber font-bold text-emerald-400 text-sm md:text-base">$125,000</div>
+            <div class="text-[10px] uppercase text-slate-400">Cash</div>
+            <div id="ui-cash" class="font-cyber font-bold text-emerald-400 text-sm md:text-base">$185,000</div>
           </div>
           <div class="h-6 w-[1px] bg-slate-700"></div>
           <div>
-            <div class="text-[10px] uppercase text-slate-400">Leistung / Gewicht</div>
-            <div id="ui-power-badge" class="font-cyber font-bold text-cyan-300 text-sm md:text-base">320 PS • 1180 kg</div>
+            <div class="text-[10px] uppercase text-slate-400">Specs</div>
+            <div id="ui-power-badge" class="font-cyber font-bold text-cyan-300 text-xs md:text-sm">630 PS • 2075 kg • AWD</div>
           </div>
           <div class="h-6 w-[1px] bg-slate-700"></div>
           <div>
-            <div class="text-[10px] uppercase text-slate-400">PI-Rating</div>
-            <div id="ui-pi-badge" class="font-cyber font-bold text-amber-400 text-sm md:text-base">S1 840</div>
+            <div class="text-[10px] uppercase text-slate-400">Klasse</div>
+            <div id="ui-pi-badge" class="font-cyber font-bold text-amber-400 text-xs md:text-sm">S1 860</div>
           </div>
         </div>
 
-        <button id="btn-toggle-mobile" class="glass px-3 py-2 rounded-xl text-xs font-bold hover:border-cyan-400 transition flex items-center gap-1.5">
-          <span>📱</span> <span id="lbl-mobile-mode">Touch: Auto</span>
+        <button id="btn-mystery-crate" class="glass px-3 py-2 rounded-xl text-xs font-cyber font-bold text-amber-300 border border-amber-400/40 hover:bg-amber-500/20 transition" title="Gewinne seltene Autos oder bis zu $250k!">
+          🎰 Glücks-Kiste ($15k)
         </button>
-        <button id="btn-add-cash" class="glass px-3 py-2 rounded-xl text-xs font-bold text-emerald-300 hover:border-emerald-400 transition" title="Test-Budget aufladen">
-          +$50k Bonus
+        <button id="btn-weather-cycle" class="glass px-2.5 py-2 rounded-xl text-xs font-bold text-sky-300 hover:border-cyan-400 transition">
+          ☀️ Wetter: Sunset
+        </button>
+        <button id="btn-toggle-mobile" class="glass px-2.5 py-2 rounded-xl text-xs font-bold hover:border-cyan-400 transition">
+          📱 <span id="lbl-mobile-mode">Touch: Auto</span>
+        </button>
+        <button id="btn-add-cash" class="glass px-2.5 py-2 rounded-xl text-xs font-bold text-emerald-300 hover:border-emerald-400 transition">
+          +$100k
         </button>
       </div>
     </div>
 
-    <!-- Center Left / Right Panels -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 my-auto max-h-[74vh] pointer-events-none">
+    <!-- Main Content Columns -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-2.5 my-auto max-h-[76vh] pointer-events-none">
       
-      <!-- Left Column: Fahrzeugwahl, Spielmodus, Strecke & Multiplayer -->
-      <div class="lg:col-span-4 flex flex-col gap-2.5 overflow-y-auto custom-scroll pr-1 pointer-auto max-h-[72vh]">
+      <!-- Left Column: Autohaus-Button, 6 Spielmodi, 10 Strecken & P2P Multiplayer -->
+      <div class="lg:col-span-4 flex flex-col gap-2 overflow-y-auto custom-scroll pr-1 pointer-auto max-h-[75vh]">
         
-        <!-- 1. Fahrzeug-Auswahl -->
+        <!-- 1. Fahrzeug & 216-Autohaus -->
         <div class="glass rounded-xl p-3">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-cyber uppercase tracking-wider text-cyan-400">1. Fahrzeug-Showroom (6 Autos)</span>
-            <span id="car-lock-status" class="text-xs font-bold text-emerald-400">FREIGESCHALTET</span>
+            <div>
+              <span class="text-xs font-cyber uppercase tracking-wider text-cyan-400">1. Fahrzeug-Wahl</span>
+              <div id="ui-selected-car-title" class="text-sm font-cyber font-black text-white">Audi RS6 Avant C8</div>
+            </div>
+            <button id="btn-open-dealer" class="px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-cyber font-black text-xs shadow-lg">
+              🚘 ALLE 216 AUTOS
+            </button>
           </div>
-          <div id="car-list" class="grid grid-cols-2 gap-1.5"></div>
-          <button id="btn-buy-car" class="w-full mt-2 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-cyber font-bold text-xs hidden">
-            FAHRZEUG KAUFEN
+          <!-- Schnell-Auswahl der Favoriten -->
+          <div id="quick-car-list" class="grid grid-cols-2 gap-1.5"></div>
+          <button id="btn-buy-current-car" class="w-full mt-2 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-cyber font-black text-xs hidden">
+            DIESES AUTO JETZT KAUFEN
           </button>
         </div>
 
-        <!-- 2. Spielmodus (4 Modi) -->
+        <!-- 2. 6 Spielmodi (Öl & Pickups NUR in Chaos Mayhem!) -->
         <div class="glass rounded-xl p-3">
-          <div class="text-xs font-cyber uppercase tracking-wider text-cyan-400 mb-2">2. Spielmodus wählen</div>
-          <div id="mode-list" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-1.5"></div>
-        </div>
-
-        <!-- 3. Strecken-Wahl (8 Strecken inkl. Wörthersee) -->
-        <div class="glass rounded-xl p-3">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-cyber uppercase tracking-wider text-cyan-400">3. 3D-Strecke (8 Kurse)</span>
-            <span class="text-[11px] text-amber-300">Inkl. 3D-Leitplanken</span>
-          </div>
-          <div id="track-list" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-40 overflow-y-auto custom-scroll"></div>
-        </div>
-
-        <!-- 4. Multiplayer Lobby & Einladungs-Link -->
-        <div class="glass rounded-xl p-3 border border-indigo-500/30">
           <div class="flex items-center justify-between mb-1.5">
-            <span class="text-xs font-cyber uppercase tracking-wider text-indigo-300">4. Team-Code &amp; Link Multiplayer</span>
+            <span class="text-xs font-cyber uppercase tracking-wider text-cyan-400">2. Spielmodus (6 Modi)</span>
+            <span id="mode-badge-info" class="text-[10px] bg-cyan-950 text-cyan-300 px-2 py-0.5 rounded border border-cyan-500/30">Saubere Strecke</span>
+          </div>
+          <div id="mode-list" class="grid grid-cols-2 gap-1.5"></div>
+        </div>
+
+        <!-- 3. 10 Komplexe 3D-Strecken -->
+        <div class="glass rounded-xl p-3">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-xs font-cyber uppercase tracking-wider text-cyan-400">3. 3D-Strecke (10 Welten)</span>
+            <span class="text-[10px] text-amber-300">Mit 3D-Landmarks &amp; Höhen</span>
+          </div>
+          <div id="track-list" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-36 overflow-y-auto custom-scroll"></div>
+        </div>
+
+        <!-- 4. Team-Code & Link Multiplayer -->
+        <div class="glass rounded-xl p-2.5 border border-indigo-500/30">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-cyber uppercase tracking-wider text-indigo-300">4. Echtzeit-Multiplayer</span>
             <span id="mp-status-dot" class="text-[11px] text-emerald-400 font-bold">● Bereit</span>
           </div>
-          <div class="flex gap-1.5 mb-2">
+          <div class="flex gap-1.5">
             <input id="mp-room-input" type="text" maxlength="12" placeholder="Raumcode (z.B. NOVA-1)"
-              class="flex-1 bg-slate-900/90 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-cyber uppercase text-white outline-none focus:border-indigo-400" />
-            <button id="btn-mp-join" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-cyber font-bold">
-              VERBINDEN
-            </button>
-            <button id="btn-mp-copy" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-bold" title="Einladungs-Link kopieren">
-              🔗 Link
-            </button>
+              class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs font-cyber uppercase text-white outline-none" />
+            <button id="btn-mp-join" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-cyber font-bold">JOIN</button>
+            <button id="btn-mp-copy" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-bold">🔗 Link</button>
           </div>
-          <div id="mp-info-text" class="text-[11px] text-slate-400">
-            Teile den 🔗 Einladungs-Link mit Freunden oder öffne einen zweiten Browser-Tab mit demselben Code.
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Center Spacer (damit das 3D-Auto in der Mitte frei drehbar bleibt) -->
-      <div class="hidden lg:flex lg:col-span-3 flex-col justify-end items-center pb-2 pointer-events-none">
-        <div class="glass px-3 py-1.5 rounded-full text-xs text-slate-300 mb-2">
-          🖱️ Ziehen = 3D-Kamera drehen • Komplett-PBR-Lack
+          <div id="mp-info-text" class="text-[10px] text-slate-400 mt-1">Teile den Link für P2P-Rennen.</div>
         </div>
       </div>
 
-      <!-- Right Column: 10-Kategorien Pixel-Garage Tuning, Stance & Live-Dyno -->
-      <div class="lg:col-span-5 flex flex-col gap-2.5 overflow-y-auto custom-scroll pl-1 pointer-auto max-h-[72vh]">
+      <!-- Center: 3D Showroom Info & Fun-Actions -->
+      <div class="hidden lg:flex lg:col-span-3 flex-col justify-end items-center pb-2 pointer-events-none gap-2">
+        <div class="flex gap-2 pointer-auto">
+          <button id="btn-garage-rev" class="glass px-3 py-1.5 rounded-full text-xs font-cyber font-bold text-amber-300 hover:border-amber-400">
+            🔥 Motor Aufheulen &amp; Backfire
+          </button>
+          <button id="btn-garage-hop" class="glass px-3 py-1.5 rounded-full text-xs font-cyber font-bold text-cyan-300 hover:border-cyan-400">
+            ⬆️ Airride Hop
+          </button>
+        </div>
+        <div class="glass px-3 py-1 rounded-full text-[11px] text-slate-300">
+          🖱️ Ziehen = 3D-Auto drehen • 216 Modelle
+        </div>
+      </div>
+
+      <!-- Right Column: 12-Kategorien Tuning, Stance/Dachbox & Live-Dyno -->
+      <div class="lg:col-span-5 flex flex-col gap-2 overflow-y-auto custom-scroll pl-1 pointer-auto max-h-[75vh]">
         
-        <!-- Tabs: Tuning (10 Kategorien) | Stance & Lack | Live-Dyno -->
         <div class="glass rounded-xl p-3">
-          <div class="flex gap-1.5 mb-3">
+          <div class="flex gap-1.5 mb-2.5">
             <button data-tab="parts" class="garage-tab-btn flex-1 py-1.5 rounded-lg font-cyber text-xs font-bold bg-cyan-500 text-slate-950">
-              🔧 10-KAT. TUNING
+              🔧 12-KAT. TUNING
             </button>
-            <button data-tab="stance" class="garage-tab-btn flex-1 py-1.5 rounded-lg font-cyber text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700">
-              🎨 STANCE &amp; LACK
+            <button data-tab="stance" class="garage-tab-btn flex-1 py-1.5 rounded-lg font-cyber text-xs font-bold bg-slate-800 text-slate-300">
+              🎨 STANCE &amp; OPTIK
             </button>
-            <button data-tab="dyno" class="garage-tab-btn flex-1 py-1.5 rounded-lg font-cyber text-xs font-bold bg-slate-800 text-amber-300 hover:bg-slate-700">
+            <button data-tab="dyno" class="garage-tab-btn flex-1 py-1.5 rounded-lg font-cyber text-xs font-bold bg-slate-800 text-amber-300">
               📈 LIVE DYNO
             </button>
           </div>
 
-          <!-- TAB 1: 10 Tuning-Kategorien -->
+          <!-- TAB 1: 12 Tuning-Kategorien -->
           <div id="tab-content-parts">
             <div id="tuning-cat-bar" class="flex gap-1 overflow-x-auto custom-scroll pb-2 mb-2"></div>
-            <div id="tuning-items-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto custom-scroll pr-1"></div>
+            <div id="tuning-items-list" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto custom-scroll pr-1"></div>
           </div>
 
-          <!-- TAB 2: Stance, Fahrwerk-Sliders & PBR-Lack -->
-          <div id="tab-content-stance" class="hidden space-y-3">
+          <!-- TAB 2: Stance, Lack, RS6 Dachbox & Bremssättel -->
+          <div id="tab-content-stance" class="hidden space-y-2.5">
             <div>
               <div class="flex justify-between text-xs mb-1">
-                <span class="text-slate-300 font-bold">PBR Karosserie-Lackfarbe</span>
-                <span class="text-cyan-400">Clearcoat Gloss</span>
+                <span class="text-slate-300 font-bold">PBR Karosserie-Lack</span>
+                <span class="text-cyan-400">Metallic Clearcoat</span>
               </div>
-              <div id="paint-swatches" class="flex flex-wrap gap-2"></div>
+              <div id="paint-swatches" class="flex flex-wrap gap-1.5"></div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div class="bg-slate-900/70 p-2.5 rounded-lg border border-slate-800">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
                 <div class="flex justify-between text-xs mb-1">
                   <span>Tieferlegung (Ride Height)</span>
                   <span id="lbl-ride-height" class="text-cyan-400 font-bold">0 mm</span>
                 </div>
-                <input id="slider-ride-height" type="range" min="-45" max="20" value="0" class="w-full accent-cyan-400" />
+                <input id="slider-ride-height" type="range" min="-45" max="25" value="0" class="w-full accent-cyan-400" />
               </div>
 
-              <div class="bg-slate-900/70 p-2.5 rounded-lg border border-slate-800">
+              <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
                 <div class="flex justify-between text-xs mb-1">
                   <span>Radsturz (Camber Stance)</span>
                   <span id="lbl-camber" class="text-cyan-400 font-bold">-2.0°</span>
                 </div>
-                <input id="slider-camber" type="range" min="-12" max="0" step="0.5" value="-2" class="w-full accent-cyan-400" />
+                <input id="slider-camber" type="range" min="-14" max="0" step="0.5" value="-2" class="w-full accent-cyan-400" />
               </div>
             </div>
 
-            <div class="flex items-center justify-between bg-slate-900/70 p-2.5 rounded-lg border border-slate-800">
-              <div>
-                <div class="text-xs font-bold text-white">Unterboden-Neon (Underglow)</div>
-                <div class="text-[11px] text-slate-400">Leuchtet auf Nacht- und Tunnel-Strecken</div>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="flex items-center justify-between bg-slate-900/80 p-2 rounded-lg border border-slate-800 cursor-pointer">
+                <span class="text-xs font-bold text-amber-300">🎿 RS6 Ski-Dachbox</span>
+                <input id="chk-roofbox" type="checkbox" class="accent-amber-400 w-4 h-4" />
+              </label>
+              <div class="flex items-center justify-between bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                <span class="text-xs font-bold text-cyan-300">Unterboden-Neon</span>
+                <input id="picker-neon" type="color" value="#00f2fe" class="w-8 h-6 rounded cursor-pointer bg-transparent" />
               </div>
-              <input id="picker-neon" type="color" value="#00f2fe" class="w-10 h-8 rounded cursor-pointer bg-transparent" />
             </div>
           </div>
 
@@ -228,76 +317,85 @@
           <div id="tab-content-dyno" class="hidden">
             <div class="flex items-center justify-between mb-2">
               <div>
-                <div class="text-xs font-cyber text-amber-400">PIXEL GARAGE DYNAMOMETER v4</div>
-                <div id="dyno-result-text" class="text-xs text-slate-300">Starte einen Lauf für Echtzeit-PS &amp; Drehmomentkurve</div>
+                <div class="text-xs font-cyber text-amber-400">ALLRAD-LEISTUNGSPRÜFSTAND v5.0</div>
+                <div id="dyno-result-text" class="text-xs text-slate-300">Starte Messung für PS, Nm &amp; Topspeed</div>
               </div>
               <button id="btn-run-dyno" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-cyber font-bold text-xs">
-                🔥 DYNO RUN STARTEN
+                🔥 DYNO STARTEN
               </button>
             </div>
-            <canvas id="dyno-canvas" width="440" height="190" class="w-full bg-slate-950 rounded-lg border border-slate-800"></canvas>
+            <canvas id="dyno-canvas" width="440" height="180" class="w-full bg-slate-950 rounded-lg border border-slate-800"></canvas>
           </div>
         </div>
 
         <!-- Start Race Call-To-Action -->
         <div class="glass rounded-xl p-3 flex items-center justify-between gap-3 neon-border">
           <div>
-            <div id="summary-selection" class="text-xs font-bold text-cyan-300">Wörthersee Alpine Tour • Circuit</div>
-            <div class="text-[11px] text-slate-400">Steuerung: WASD / Pfeile • Space = Handbremse • Shift = N2O • E = Öl-Falle</div>
+            <div id="summary-selection" class="text-xs font-bold text-cyan-300">Wörthersee Alpine Tour • Circuit Pro</div>
+            <div class="text-[11px] text-slate-400">WASD/Pfeile = Fahren • Shift = N2O • Space = Drift • E = Lichthupe/Öl • B = Hupe • H = Airride</div>
           </div>
-          <button id="btn-start-race" class="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500 hover:brightness-110 text-slate-950 font-cyber font-black text-sm tracking-wider shadow-xl">
-            🏁 RENNEN STARTEN
+          <button id="btn-start-race" class="px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500 hover:brightness-110 text-slate-950 font-cyber font-black text-sm tracking-wider shadow-xl whitespace-nowrap">
+            🏁 STARTEN
           </button>
         </div>
 
       </div>
     </div>
 
-    <!-- Bottom Status Footer -->
     <div class="flex justify-between items-center text-[11px] text-slate-400 pointer-auto">
-      <span>Nova Engine WebGL • Durchgängige 3D-Leitplanken &amp; Funkenflug aktiv</span>
-      <span id="footer-online-count">Lobby: Lokal + P2P Ready</span>
+      <span>Nova Engine v5.0 • 216 Autos • 10 Mega-Landmark-Strecken • Blitzer &amp; Backfire aktiv</span>
+      <span>Tipp: Klicke auf &quot;🚘 ALLE 216 AUTOS&quot; für RS6, GT3 RS, Bugatti &amp; Kult-Swaps!</span>
     </div>
   </div>
 
   <!-- IN-GAME RACING HUD -->
   <div id="race-hud" class="ui-layer hidden flex-col justify-between p-3 md:p-5">
     
-    <!-- Top Race Telemetry -->
+    <!-- Top Bar: Telemetry + Minimap + Buttons -->
     <div class="flex flex-wrap justify-between items-start gap-2">
-      <div class="glass px-4 py-2 rounded-xl flex items-center gap-4">
-        <div>
-          <div class="text-[10px] uppercase text-slate-400">Position</div>
-          <div id="hud-pos" class="font-cyber font-black text-xl text-amber-400">1 / 4</div>
+      <div class="flex items-start gap-2">
+        <div class="glass px-4 py-2 rounded-xl flex items-center gap-4">
+          <div>
+            <div class="text-[10px] uppercase text-slate-400">Platz</div>
+            <div id="hud-pos" class="font-cyber font-black text-xl text-amber-400">1 / 6</div>
+          </div>
+          <div class="h-7 w-[1px] bg-slate-700"></div>
+          <div>
+            <div class="text-[10px] uppercase text-slate-400">Runde</div>
+            <div id="hud-lap" class="font-cyber font-bold text-base text-white">1 / 3</div>
+          </div>
+          <div class="h-7 w-[1px] bg-slate-700"></div>
+          <div>
+            <div class="text-[10px] uppercase text-slate-400">Zeit</div>
+            <div id="hud-time" class="font-cyber font-bold text-base text-cyan-300">00:00.00</div>
+          </div>
+          <div id="hud-drift-box" class="hidden pl-3 border-l border-slate-700">
+            <div class="text-[10px] uppercase text-amber-300">Drift Punkte</div>
+            <div id="hud-drift-score" class="font-cyber font-black text-base text-amber-400">0 PTS</div>
+          </div>
         </div>
-        <div class="h-7 w-[1px] bg-slate-700"></div>
-        <div>
-          <div class="text-[10px] uppercase text-slate-400">Runde / Distanz</div>
-          <div id="hud-lap" class="font-cyber font-bold text-base text-white">1 / 3</div>
-        </div>
-        <div class="h-7 w-[1px] bg-slate-700"></div>
-        <div>
-          <div class="text-[10px] uppercase text-slate-400">Zeit</div>
-          <div id="hud-time" class="font-cyber font-bold text-base text-cyan-300">00:00.00</div>
-        </div>
-        <div id="hud-drift-box" class="hidden pl-3 border-l border-slate-700">
-          <div class="text-[10px] uppercase text-amber-300">Drift Score</div>
-          <div id="hud-drift-score" class="font-cyber font-black text-base text-amber-400">0 PTS</div>
+
+        <!-- Live Minimap Radar -->
+        <div class="glass p-1.5 rounded-xl hidden sm:block">
+          <canvas id="minimap-canvas" width="110" height="85" class="rounded-lg bg-slate-950/80"></canvas>
         </div>
       </div>
 
-      <!-- Center Banner (Countdown / Drag Tree / Alerts) -->
+      <!-- Center Countdown / Mode Banner -->
       <div id="hud-center-banner" class="glass-dark px-6 py-2.5 rounded-2xl border border-amber-400/50 font-cyber font-black text-xl md:text-2xl text-amber-300 tracking-widest hidden">
         READY...
       </div>
 
-      <!-- Right Action Buttons -->
-      <div class="flex items-center gap-2 pointer-auto">
-        <button id="btn-gyro-toggle" class="glass px-3 py-2 rounded-xl text-xs font-bold text-slate-200 hover:border-cyan-400 hidden">
+      <!-- Right Controls -->
+      <div class="flex flex-wrap items-center gap-1.5 pointer-auto">
+        <button id="btn-hud-horn" class="glass px-2.5 py-2 rounded-xl text-xs font-bold text-amber-300 hover:border-amber-400">
+          📣 Hupe (B)
+        </button>
+        <button id="btn-gyro-toggle" class="glass px-2.5 py-2 rounded-xl text-xs font-bold text-slate-200 hover:border-cyan-400 hidden">
           🧭 Gyro: AUS
         </button>
         <button id="btn-camera-view" class="glass px-3 py-2 rounded-xl text-xs font-bold text-cyan-300 hover:border-cyan-400">
-          🎥 Kamera: Chase
+          🎥 Cam: Chase
         </button>
         <button id="btn-back-garage" class="glass px-3 py-2 rounded-xl text-xs font-bold text-rose-300 hover:border-rose-400">
           🏠 Werkstatt
@@ -305,33 +403,31 @@
       </div>
     </div>
 
-    <!-- Bottom Tacho, RPM Bar, N2O & Oil Trap Counter -->
+    <!-- Bottom HUD: N2O, Action Status & Digital Speedo -->
     <div class="flex flex-col md:flex-row items-center md:items-end justify-between gap-3 mt-auto">
       
-      <!-- Left: Pickups & Oil Trap Status -->
       <div class="glass px-4 py-2.5 rounded-xl flex items-center gap-4">
         <div>
-          <div class="text-[10px] uppercase text-slate-400">N2O Lachgas (Shift)</div>
+          <div class="text-[10px] uppercase text-slate-400">N2O Boost (Shift)</div>
           <div class="w-28 h-2.5 bg-slate-800 rounded-full overflow-hidden mt-1">
             <div id="hud-nos-bar" class="h-full bg-gradient-to-r from-cyan-400 to-blue-500" style="width: 100%"></div>
           </div>
         </div>
         <div>
-          <div class="text-[10px] uppercase text-slate-400">Öl-Fallen (Taste E)</div>
-          <div id="hud-oil-count" class="font-cyber font-bold text-sm text-amber-400">🛢️ x3 bereit</div>
+          <div id="hud-special-label" class="text-[10px] uppercase text-slate-400">Spezial-Aktion (Taste E)</div>
+          <div id="hud-oil-count" class="font-cyber font-bold text-sm text-amber-400">💡 Lichthupe bereit</div>
         </div>
       </div>
 
-      <!-- Right: Digital Pixel Garage Speedometer & Gear -->
       <div class="glass-dark px-5 py-3 rounded-2xl border border-cyan-500/40 flex items-center gap-4 neon-border">
         <div class="text-center">
           <div class="text-[10px] uppercase text-slate-400">Gang</div>
           <div id="hud-gear" class="font-cyber font-black text-3xl text-amber-400">1</div>
         </div>
-        <div class="w-40 sm:w-52">
+        <div class="w-44 sm:w-56">
           <div class="flex justify-between text-xs mb-1">
             <span id="hud-rpm-text" class="font-cyber text-slate-300">1200 RPM</span>
-            <span id="hud-shift-light" class="font-cyber font-bold text-rose-500 hidden animate-pulse">SHIFT!</span>
+            <span id="hud-shift-light" class="font-cyber font-bold text-rose-500 hidden animate-pulse">🔥 BACKFIRE!</span>
           </div>
           <div class="w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
             <div id="hud-rpm-bar" class="h-full bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 transition-all duration-75" style="width: 15%"></div>
@@ -344,261 +440,592 @@
       </div>
     </div>
 
-    <!-- MOBILE MULTI-TOUCH COCKPIT (Automatisch auf Touch-Geräten oder per Toggle) -->
+    <!-- MOBILE MULTI-TOUCH COCKPIT -->
     <div id="mobile-cockpit" class="hidden justify-between items-end pt-2 pointer-auto">
-      <!-- Links / Rechts Lenkung -->
       <div class="flex gap-2.5">
-        <button id="touch-left" class="touch-btn glass w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-2xl font-bold border-cyan-400/40">
-          ◀
-        </button>
-        <button id="touch-right" class="touch-btn glass w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-2xl font-bold border-cyan-400/40">
-          ▶
-        </button>
+        <button id="touch-left" class="touch-btn glass w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-2xl font-bold border-cyan-400/40">◀</button>
+        <button id="touch-right" class="touch-btn glass w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-2xl font-bold border-cyan-400/40">▶</button>
       </div>
-
-      <!-- Rechts: N2O, Öl-Falle, Bremse/Drift, Gas -->
       <div class="flex items-end gap-2">
         <div class="flex flex-col gap-2">
-          <button id="touch-oil" class="touch-btn glass px-3 py-2.5 rounded-xl font-cyber font-bold text-xs text-amber-300 border-amber-400/40">
-            🛢️ ÖL
-          </button>
-          <button id="touch-nos" class="touch-btn glass px-3 py-2.5 rounded-xl font-cyber font-bold text-xs text-cyan-300 border-cyan-400/40">
-            🔥 N2O
-          </button>
+          <button id="touch-oil" class="touch-btn glass px-3 py-2.5 rounded-xl font-cyber font-bold text-xs text-amber-300 border-amber-400/40">⚡ AKTION (E)</button>
+          <button id="touch-nos" class="touch-btn glass px-3 py-2.5 rounded-xl font-cyber font-bold text-xs text-cyan-300 border-cyan-400/40">🔥 N2O</button>
         </div>
         <button id="touch-brake" class="touch-btn glass w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex flex-col items-center justify-center font-cyber font-bold text-xs text-rose-300 border-rose-500/40">
-          <span>🛑</span>
-          <span>DRIFT</span>
+          <span>🛑</span><span>DRIFT</span>
         </button>
         <button id="touch-gas" class="touch-btn glass w-20 h-24 sm:w-24 sm:h-28 rounded-2xl flex flex-col items-center justify-center font-cyber font-black text-sm text-emerald-300 border-emerald-400/50 bg-emerald-950/40">
-          <span class="text-xl">⚡</span>
-          <span>GAS</span>
+          <span class="text-xl">⚡</span><span>GAS</span>
         </button>
       </div>
     </div>
-
   </div>
 
   <!-- FINISH MODAL -->
   <div id="finish-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 hidden">
     <div class="glass-dark max-w-md w-full rounded-2xl p-6 text-center border border-amber-400/40 neon-amber">
-      <div class="text-xs font-cyber uppercase tracking-widest text-amber-400 mb-1">Rennen beendet</div>
-      <h3 id="finish-title" class="text-3xl font-cyber font-black text-white mb-2">PLATZ 1! 🏆</h3>
-      <p id="finish-details" class="text-sm text-slate-300 mb-4">Zeit: 01:12.40 • Belohnung: +$25,000</p>
+      <div class="text-xs font-cyber uppercase tracking-widest text-amber-400 mb-1">Renn-Auswertung</div>
+      <h3 id="finish-title" class="text-3xl font-cyber font-black text-white mb-2">SIEG! 🏆</h3>
+      <p id="finish-details" class="text-sm text-slate-300 mb-4">Zeit: 01:12.40 • Preisgeld: +$45,000</p>
       <div class="flex gap-2">
-        <button id="btn-finish-retry" class="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-cyber font-bold text-xs">
-          🔄 NOCHMAL FAHREN
-        </button>
-        <button id="btn-finish-garage" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-cyber font-bold text-xs">
-          🏠 ZUR WERKSTATT
-        </button>
+        <button id="btn-finish-retry" class="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-cyber font-bold text-xs">🔄 NOCHMAL</button>
+        <button id="btn-finish-garage" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-cyber font-bold text-xs">🏠 WERKSTATT</button>
       </div>
     </div>
   </div>
 
   <script>
-    /********************************************************************
-     * NOVA RACER 3D: PIXEL GARAGE EDITION v4.0 (COMPLETE SINGLE-FILE)
-     ********************************************************************/
+    /*************************************************************************
+     * NOVA RACER 3D: ULTIMATE 216-CAR EDITION v5.0
+     * - 216 echte & kultige Fahrzeuge mit spezifischen 3D-Karosserieformen
+     * - 10 spektakuläre 3D-Welten mit individuellen Mega-Landmarks & Animationen
+     * - Öl & Pickups exklusiv im Chaos-Mayhem-Modus
+     * - 12 Tuning-Kategorien + RS6 Dachbox, Backfire-Flammen & Glücks-Kiste
+     *************************************************************************/
 
-    // --- 1. DATENBANK: 6 FAHRZEUGE, 8 STRECKEN, 4 MODI, 10 TUNING-KATEGORIEN ---
-    const CARS = [
-      { id: 'eg6', name: 'Honda Civic EG6', price: 0, baseHp: 210, weight: 980, color: '#ef4444', length: 4.1, width: 1.78, wing: false },
-      { id: 'rx7', name: 'Mazda RX-7 FD', price: 28000, baseHp: 280, weight: 1220, color: '#f59e0b', length: 4.3, width: 1.82, wing: true },
-      { id: 'r34', name: 'Nissan Skyline R34', price: 55000, baseHp: 340, weight: 1480, color: '#2563eb', length: 4.5, width: 1.86, wing: true },
-      { id: 'supra', name: 'Toyota Supra MK4', price: 62000, baseHp: 350, weight: 1450, color: '#f97316', length: 4.5, width: 1.86, wing: true },
-      { id: 'gt3rs', name: 'Porsche 911 GT3 RS', price: 120000, baseHp: 525, weight: 1380, color: '#10b981', length: 4.55, width: 1.92, wing: true },
-      { id: 'jesko', name: 'Nova Jesko Hyperion X', price: 250000, baseHp: 1280, weight: 1290, color: '#e2e8f0', length: 4.7, width: 2.0, wing: true }
+    const RAW_CAR_CATALOG = [
+      // === AUDI SPORT (24) ===
+      ['Audi RS6 Avant C8 Performance', 'Audi', 'wagon', 630, 2075, 0, '#1e293b', 'AWD'],
+      ['Audi RS6 Avant GT (Limited)', 'Audi', 'wagon', 630, 2020, 195000, '#f8fafc', 'AWD'],
+      ['Audi RS6 Avant C7 ABT 800', 'Audi', 'wagon', 800, 1980, 142000, '#dc2626', 'AWD'],
+      ['Audi RS6 Avant C6 V10 BiTurbo', 'Audi', 'wagon', 580, 2025, 68000, '#2563eb', 'AWD'],
+      ['Audi RS4 Avant B9 Competition', 'Audi', 'wagon', 450, 1745, 78000, '#16a34a', 'AWD'],
+      ['Audi RS2 Avant Porsche-Spec', 'Audi', 'wagon', 315, 1595, 64000, '#1d4ed8', 'AWD'],
+      ['Audi RS3 Sportback 8Y 5-Zyl', 'Audi', 'hatch', 400, 1570, 58000, '#10b981', 'AWD'],
+      ['Audi RS3 Limousine DAZA 900HP', 'Audi', 'sedan', 900, 1520, 115000, '#475569', 'AWD'],
+      ['Audi R8 V10 Performance Quattro', 'Audi', 'supercar', 620, 1595, 168000, '#f59e0b', 'AWD'],
+      ['Audi R8 V10 GT RWD', 'Audi', 'supercar', 620, 1570, 185000, '#e2e8f0', 'RWD'],
+      ['Audi R8 Twin-Turbo Underground', 'Audi', 'supercar', 1250, 1540, 290000, '#090d16', 'AWD'],
+      ['Audi Sport Quattro S1 Pikes Peak', 'Audi', 'gt3', 598, 1090, 220000, '#facc15', 'AWD'],
+      ['Audi TT RS Iconic Edition', 'Audi', 'coupe', 400, 1475, 69000, '#64748b', 'AWD'],
+      ['Audi RS7 Sportback C8', 'Audi', 'sedan', 600, 2065, 128000, '#334155', 'AWD'],
+      ['Audi RS e-tron GT Performance', 'Audi', 'sedan', 925, 2350, 155000, '#06b6d4', 'AWD'],
+      ['Audi RS Q8 Performance', 'Audi', 'suv', 640, 2290, 145000, '#ea580c', 'AWD'],
+      ['Audi S4 B5 2.7 BiTurbo Limo', 'Audi', 'sedan', 265, 1510, 24000, '#facc15', 'AWD'],
+      ['Audi RS5 Coupe DTM Spec', 'Audi', 'gt3', 610, 1120, 190000, '#ef4444', 'RWD'],
+      ['Audi S1 Hoonitron Electric', 'Audi', 'gt3', 680, 1350, 240000, '#e2e8f0', 'AWD'],
+      ['Audi A4 DTM V8 Meisterwagen', 'Audi', 'gt3', 480, 1050, 140000, '#38bdf8', 'RWD'],
+      ['Audi RS4 B7 V8 Hochdrehzahl', 'Audi', 'wagon', 420, 1710, 52000, '#dc2626', 'AWD'],
+      ['Audi Ur-Quattro 20V Turbo', 'Audi', 'coupe', 220, 1300, 72000, '#f8fafc', 'AWD'],
+      ['Audi R18 e-tron Quattro LMP1', 'Audi', 'hyper', 1000, 875, 540000, '#1e293b', 'AWD'],
+      ['Audi RS6 C5 BiTurbo Klassiker', 'Audi', 'wagon', 450, 1840, 34000, '#475569', 'AWD'],
+
+      // === PORSCHE (24) ===
+      ['Porsche 911 GT3 RS (992)', 'Porsche', 'gt3', 525, 1450, 215000, '#10b981', 'RWD'],
+      ['Porsche 911 GT2 RS Manthey (991)', 'Porsche', 'gt3', 700, 1470, 285000, '#facc15', 'RWD'],
+      ['Porsche 911 Turbo S (992)', 'Porsche', 'coupe', 650, 1640, 195000, '#6366f1', 'AWD'],
+      ['Porsche 911 GT3 R Rennsport', 'Porsche', 'gt3', 620, 1240, 320000, '#ec4899', 'RWD'],
+      ['Porsche 911 Dakar Rallye', 'Porsche', 'coupe', 480, 1605, 185000, '#1d4ed8', 'AWD'],
+      ['Porsche 911 S/T Lightweight', 'Porsche', 'coupe', 525, 1380, 240000, '#38bdf8', 'RWD'],
+      ['Porsche Carrera GT V10', 'Porsche', 'supercar', 612, 1380, 350000, '#cbd5e1', 'RWD'],
+      ['Porsche 918 Spyder Weissach', 'Porsche', 'hyper', 887, 1634, 420000, '#84cc16', 'AWD'],
+      ['Porsche 718 Cayman GT4 RS', 'Porsche', 'gt3', 500, 1415, 148000, '#2563eb', 'RWD'],
+      ['Porsche 959 Gruppe B Legend', 'Porsche', 'coupe', 450, 1450, 260000, '#ef4444', 'AWD'],
+      ['Porsche 911 GT1 Straßenversion', 'Porsche', 'hyper', 544, 1150, 490000, '#f8fafc', 'RWD'],
+      ['Porsche 930 Turbo Widowmaker', 'Porsche', 'coupe', 300, 1300, 110000, '#dc2626', 'RWD'],
+      ['Porsche 964 RWB Widebody', 'Porsche', 'gt3', 480, 1180, 165000, '#a855f7', 'RWD'],
+      ['Porsche Taycan Turbo GT Weissach', 'Porsche', 'sedan', 1034, 2220, 210000, '#7c3aed', 'AWD'],
+      ['Porsche Panamera Turbo S Sport Turismo', 'Porsche', 'wagon', 700, 2150, 160000, '#f97316', 'AWD'],
+      ['Porsche Cayenne Turbo GT', 'Porsche', 'suv', 659, 2220, 152000, '#475569', 'AWD'],
+      ['Porsche 935 Moby Dick Tribute', 'Porsche', 'gt3', 700, 1380, 390000, '#e2e8f0', 'RWD'],
+      ['Porsche 919 Hybrid Evo Track', 'Porsche', 'hyper', 1160, 849, 650000, '#f8fafc', 'AWD'],
+      ['Porsche 944 Turbo Cup', 'Porsche', 'coupe', 290, 1180, 42000, '#ef4444', 'RWD'],
+      ['RUF CTR Yellowbird', 'Porsche', 'coupe', 469, 1150, 275000, '#eab308', 'RWD'],
+      ['Porsche 997 GT3 RS 4.0', 'Porsche', 'gt3', 500, 1360, 230000, '#f8fafc', 'RWD'],
+      ['Porsche 963 LMDh Hypercar', 'Porsche', 'hyper', 680, 1030, 590000, '#ef4444', 'RWD'],
+      ['Porsche 928 GTS V8', 'Porsche', 'coupe', 350, 1620, 68000, '#1e3a8a', 'RWD'],
+      ['Singer Porsche 911 DLS Williams', 'Porsche', 'coupe', 500, 990, 440000, '#10b981', 'RWD'],
+
+      // === BMW M-GMBH (24) ===
+      ['BMW M3 G81 Touring Competition', 'BMW', 'wagon', 530, 1865, 98000, '#16a34a', 'AWD'],
+      ['BMW M3 G80 CS', 'BMW', 'sedan', 550, 1765, 125000, '#84cc16', 'AWD'],
+      ['BMW M4 G82 CSL Lightweight', 'BMW', 'gt3', 550, 1625, 145000, '#334155', 'RWD'],
+      ['BMW M5 F90 CS V8 BiTurbo', 'BMW', 'sedan', 635, 1825, 158000, '#064e3b', 'AWD'],
+      ['BMW M5 G99 Touring Hybrid', 'BMW', 'wagon', 727, 2435, 148000, '#1d4ed8', 'AWD'],
+      ['BMW M5 E60 V10 Sauger', 'BMW', 'sedan', 507, 1755, 58000, '#1e3a8a', 'RWD'],
+      ['BMW M3 E46 GTR Need-Spec', 'BMW', 'gt3', 490, 1120, 195000, '#cbd5e1', 'RWD'],
+      ['BMW M3 E30 Sport Evolution', 'BMW', 'coupe', 238, 1200, 92000, '#dc2626', 'RWD'],
+      ['BMW M3 E92 GTS V8', 'BMW', 'gt3', 450, 1530, 112000, '#f97316', 'RWD'],
+      ['BMW M2 G87 Track Build', 'BMW', 'coupe', 480, 1700, 74000, '#38bdf8', 'RWD'],
+      ['BMW 1M Coupe E82', 'BMW', 'coupe', 340, 1495, 56000, '#ea580c', 'RWD'],
+      ['BMW M8 Competition Coupe', 'BMW', 'coupe', 625, 1885, 138000, '#6d28d9', 'AWD'],
+      ['BMW M1 Procar Legend', 'BMW', 'supercar', 470, 1020, 290000, '#f8fafc', 'RWD'],
+      ['BMW Z4 GT3 V8 Racecar', 'BMW', 'gt3', 515, 1190, 180000, '#eab308', 'RWD'],
+      ['BMW X5 M Competition', 'BMW', 'suv', 625, 2310, 122000, '#0f172a', 'AWD'],
+      ['BMW XM Label Red', 'BMW', 'suv', 748, 2710, 175000, '#991b1b', 'AWD'],
+      ['BMW E36 M3 Turbo Drift Spec', 'BMW', 'coupe', 720, 1260, 65000, '#9333ea', 'RWD'],
+      ['BMW E39 M5 V8 Klassiker', 'BMW', 'sedan', 400, 1720, 49000, '#1e40af', 'RWD'],
+      ['BMW 3.0 CSL Hommage (2023)', 'BMW', 'gt3', 560, 1624, 380000, '#f8fafc', 'RWD'],
+      ['BMW 850CSi E31 V12', 'BMW', 'coupe', 380, 1860, 88000, '#dc2626', 'RWD'],
+      ['BMW M4 GT3 Evo Racecar', 'BMW', 'gt3', 590, 1250, 260000, '#2563eb', 'RWD'],
+      ['BMW M5 E34 Touring Klassiker', 'BMW', 'wagon', 340, 1720, 54000, '#6d28d9', 'RWD'],
+      ['BMW Z8 Roadster V8', 'BMW', 'coupe', 400, 1585, 165000, '#cbd5e1', 'RWD'],
+      ['Alpina B5 GT Touring', 'BMW', 'wagon', 634, 2055, 139000, '#15803d', 'AWD'],
+
+      // === MERCEDES-AMG & BRABUS (22) ===
+      ['Mercedes-AMG GT Black Series', 'Mercedes', 'gt3', 730, 1540, 295000, '#f97316', 'RWD'],
+      ['Mercedes-AMG ONE F1-Hypercar', 'Mercedes', 'hyper', 1063, 1695, 580000, '#94a3b8', 'AWD'],
+      ['Mercedes-AMG E63 S T-Modell', 'Mercedes', 'wagon', 612, 2070, 118000, '#1e293b', 'AWD'],
+      ['Brabus Rocket 900 GT63', 'Mercedes', 'sedan', 900, 2120, 265000, '#090d16', 'AWD'],
+      ['Mercedes-AMG C63 S W204 6.2 V8', 'Mercedes', 'coupe', 507, 1730, 64000, '#e2e8f0', 'RWD'],
+      ['Mercedes-Benz CLK GTR AMG V12', 'Mercedes', 'hyper', 612, 1440, 620000, '#cbd5e1', 'RWD'],
+      ['Mercedes-Benz SLS AMG Black Series', 'Mercedes', 'gt3', 631, 1550, 270000, '#facc15', 'RWD'],
+      ['Mercedes-Benz SLR McLaren 722', 'Mercedes', 'supercar', 650, 1724, 310000, '#334155', 'RWD'],
+      ['Mercedes-Benz 190E 2.5-16 Evo II', 'Mercedes', 'gt3', 235, 1340, 135000, '#0f172a', 'RWD'],
+      ['Mercedes-AMG A45 S 4MATIC+', 'Mercedes', 'hatch', 421, 1625, 59000, '#facc15', 'AWD'],
+      ['Mercedes-AMG G63 W464', 'Mercedes', 'suv', 585, 2485, 165000, '#111827', 'AWD'],
+      ['Mercedes-AMG G63 6x6 Monster', 'Mercedes', 'suv', 610, 3775, 450000, '#d97706', 'AWD'],
+      ['Mercedes-AMG GT 63 S E-Performance', 'Mercedes', 'sedan', 843, 2380, 192000, '#dc2626', 'AWD'],
+      ['Mercedes-Benz SL65 AMG Black Series', 'Mercedes', 'coupe', 670, 1870, 245000, '#475569', 'RWD'],
+      ['Mercedes-AMG C63 DTM Racecar', 'Mercedes', 'gt3', 500, 1120, 175000, '#ec4899', 'RWD'],
+      ['Mercedes-Benz E55 AMG Kompressor', 'Mercedes', 'wagon', 476, 1910, 38000, '#94a3b8', 'RWD'],
+      ['Mercedes-Benz 300 SL Gullwing', 'Mercedes', 'coupe', 215, 1295, 340000, '#cbd5e1', 'RWD'],
+      ['Brabus 800 Widestar G-Wagon', 'Mercedes', 'suv', 800, 2450, 290000, '#000000', 'AWD'],
+      ['Mercedes-AMG CLK 63 Black Series', 'Mercedes', 'coupe', 507, 1745, 145000, '#f8fafc', 'RWD'],
+      ['Mercedes-Benz S65 AMG V12 BiTurbo', 'Mercedes', 'sedan', 630, 2250, 128000, '#090d16', 'RWD'],
+      ['Mercedes-AMG GT3 Evo Track', 'Mercedes', 'gt3', 550, 1285, 280000, '#eab308', 'RWD'],
+      ['Mercedes-Benz 500E W124 Porsche-Built', 'Mercedes', 'sedan', 326, 1710, 68000, '#1e293b', 'RWD'],
+
+      // === JDM LEGENDS (30) ===
+      ['Honda Civic EG6 Time-Attack', 'JDM', 'hatch', 210, 980, 0, '#ef4444', 'FWD'],
+      ['Nissan Skyline GT-R R34 Z-Tune', 'JDM', 'gt3', 500, 1560, 145000, '#2563eb', 'AWD'],
+      ['Toyota Supra MK4 2JZ TwinTurbo', 'JDM', 'gt3', 380, 1490, 82000, '#f97316', 'RWD'],
+      ['Mazda RX-7 FD Spirit R Rotary', 'JDM', 'gt3', 310, 1250, 62000, '#f59e0b', 'RWD'],
+      ['Nissan GT-R R35 Nismo (2025)', 'JDM', 'gt3', 600, 1720, 165000, '#e2e8f0', 'AWD'],
+      ['Honda NSX-R NA2 Championship', 'JDM', 'supercar', 290, 1270, 130000, '#f8fafc', 'RWD'],
+      ['Lexus LFA Nürburgring V10', 'JDM', 'supercar', 571, 1480, 380000, '#facc15', 'RWD'],
+      ['Mitsubishi Lancer Evo IX MR', 'JDM', 'sedan', 320, 1410, 48000, '#dc2626', 'AWD'],
+      ['Subaru Impreza WRX STI 22B', 'JDM', 'coupe', 300, 1270, 95000, '#1d4ed8', 'AWD'],
+      ['Nissan Silvia S15 Spec-R Drift', 'JDM', 'coupe', 280, 1240, 39000, '#a855f7', 'RWD'],
+      ['Toyota AE86 Sprinter Trueno Tofu', 'JDM', 'coupe', 175, 940, 32000, '#f8fafc', 'RWD'],
+      ['Mazda RX-7 VeilSide Fortune', 'JDM', 'supercar', 450, 1220, 118000, '#ea580c', 'RWD'],
+      ['Nissan Skyline GT-R R32 Godzilla', 'JDM', 'coupe', 310, 1430, 52000, '#475569', 'AWD'],
+      ['Nissan Skyline GT-R R33 400R', 'JDM', 'coupe', 400, 1550, 125000, '#7c3aed', 'AWD'],
+      ['Toyota GR Supra A90 Jarama', 'JDM', 'coupe', 387, 1495, 58000, '#3b82f6', 'RWD'],
+      ['Toyota GR Yaris Rally1 Spec', 'JDM', 'hatch', 300, 1280, 44000, '#ef4444', 'AWD'],
+      ['Honda Civic Type R FL5 (2025)', 'JDM', 'hatch', 329, 1429, 49000, '#f8fafc', 'FWD'],
+      ['Honda S2000 CR 9000-RPM', 'JDM', 'coupe', 250, 1255, 42000, '#eab308', 'RWD'],
+      ['Honda Integra Type R DC2', 'JDM', 'coupe', 200, 1080, 29000, '#f8fafc', 'FWD'],
+      ['Nissan 240SX S13 Rocket Bunny', 'JDM', 'coupe', 420, 1180, 36000, '#ec4899', 'RWD'],
+      ['Nissan Fairlady 240Z Devil Z', 'JDM', 'coupe', 600, 1040, 88000, '#1e3a8a', 'RWD'],
+      ['Nissan 350Z DK Drift King', 'JDM', 'gt3', 430, 1440, 46000, '#334155', 'RWD'],
+      ['Toyota Chaser JZX100 1JZ', 'JDM', 'sedan', 360, 1480, 34000, '#0f172a', 'RWD'],
+      ['Mitsubishi 3000GT VR-4 TwinTurbo', 'JDM', 'coupe', 320, 1680, 38000, '#dc2626', 'AWD'],
+      ['Mazda 787B 4-Rotor LeMans', 'JDM', 'hyper', 700, 830, 590000, '#f97316', 'RWD'],
+      ['Top Secret V12 Supra Gold', 'JDM', 'gt3', 943, 1520, 230000, '#eab308', 'RWD'],
+      ['Mitsubishi Lancer Evo VI Tommi Mäkinen', 'JDM', 'sedan', 300, 1360, 54000, '#ef4444', 'AWD'],
+      ['Nissan Stagea 260RS R34-Wagon', 'JDM', 'wagon', 380, 1680, 49000, '#2563eb', 'AWD'],
+      ['Toyota Celica GT-Four Castrol Rally', 'JDM', 'coupe', 310, 1350, 46000, '#f8fafc', 'AWD'],
+      ['Honda Civic EK9 Type R', 'JDM', 'hatch', 185, 1050, 25000, '#facc15', 'FWD'],
+
+      // === HYPERCARS (24) ===
+      ['Koenigsegg Jesko Attack', 'Hyper', 'hyper', 1600, 1420, 520000, '#e2e8f0', 'RWD'],
+      ['Koenigsegg Jesko Absolut 530KMH', 'Hyper', 'hyper', 1600, 1390, 580000, '#334155', 'RWD'],
+      ['Koenigsegg One:1 Megacar', 'Hyper', 'hyper', 1360, 1360, 490000, '#cbd5e1', 'RWD'],
+      ['Koenigsegg Agera RS', 'Hyper', 'hyper', 1360, 1395, 450000, '#dc2626', 'RWD'],
+      ['Koenigsegg Gemera HV8', 'Hyper', 'hyper', 2300, 1950, 690000, '#06b6d4', 'AWD'],
+      ['Bugatti Tourbillon V16 (2026)', 'Hyper', 'hyper', 1800, 1995, 720000, '#2563eb', 'AWD'],
+      ['Bugatti Bolide Track Monster', 'Hyper', 'hyper', 1850, 1240, 790000, '#38bdf8', 'AWD'],
+      ['Bugatti Chiron Super Sport 300+', 'Hyper', 'hyper', 1600, 1978, 610000, '#f97316', 'AWD'],
+      ['Bugatti Veyron 16.4 Super Sport', 'Hyper', 'hyper', 1200, 1888, 390000, '#1e293b', 'AWD'],
+      ['Bugatti EB110 Super Sport', 'Hyper', 'supercar', 612, 1418, 340000, '#1d4ed8', 'AWD'],
+      ['Pagani Huayra R V12', 'Hyper', 'hyper', 850, 1050, 560000, '#f8fafc', 'RWD'],
+      ['Pagani Zonda Revolución', 'Hyper', 'hyper', 800, 1070, 540000, '#1e3a8a', 'RWD'],
+      ['Rimac Nevera R 2107HP', 'Hyper', 'hyper', 2107, 2260, 640000, '#10b981', 'AWD'],
+      ['Hennessey Venom F5 Revolution', 'Hyper', 'hyper', 1817, 1385, 590000, '#facc15', 'RWD'],
+      ['SSC Tuatara Striker', 'Hyper', 'hyper', 1750, 1247, 550000, '#ef4444', 'RWD'],
+      ['Aston Martin Valkyrie AMR Pro', 'Hyper', 'hyper', 1160, 1000, 610000, '#065f46', 'RWD'],
+      ['Gordon Murray T.50 Fan-Car', 'Hyper', 'hyper', 663, 986, 480000, '#94a3b8', 'RWD'],
+      ['Apollo Intensa Emozione V12', 'Hyper', 'hyper', 780, 1250, 510000, '#a855f7', 'RWD'],
+      ['McLaren Speedtail 403KMH', 'Hyper', 'hyper', 1070, 1430, 440000, '#38bdf8', 'RWD'],
+      ['McLaren F1 LM Papaya', 'Hyper', 'hyper', 680, 1062, 680000, '#f97316', 'RWD'],
+      ['Lotus Evija Electric Hyper', 'Hyper', 'hyper', 2039, 1887, 530000, '#facc15', 'AWD'],
+      ['Czinger 21C V8 Hybrid', 'Hyper', 'hyper', 1350, 1240, 470000, '#dc2626', 'AWD'],
+      ['Koenigsegg CC850 Manual', 'Hyper', 'hyper', 1385, 1385, 510000, '#cbd5e1', 'RWD'],
+      ['Pagani Utopia V12 TwinTurbo', 'Hyper', 'hyper', 864, 1280, 525000, '#f59e0b', 'RWD'],
+
+      // === SUPERCARS: FERRARI, LAMBO, MCLAREN (30) ===
+      ['Ferrari SF90 XX Stradale', 'Supercar', 'gt3', 1030, 1560, 390000, '#dc2626', 'AWD'],
+      ['Ferrari F40 Competizione', 'Supercar', 'gt3', 700, 1050, 480000, '#ef4444', 'RWD'],
+      ['Ferrari LaFerrari Aperta', 'Supercar', 'hyper', 963, 1585, 460000, '#dc2626', 'RWD'],
+      ['Ferrari 488 Pista Piloti', 'Supercar', 'supercar', 720, 1385, 240000, '#ef4444', 'RWD'],
+      ['Ferrari 812 Competizione V12', 'Supercar', 'coupe', 830, 1487, 310000, '#facc15', 'RWD'],
+      ['Ferrari FXX-K Evo Track', 'Supercar', 'hyper', 1050, 1255, 550000, '#dc2626', 'RWD'],
+      ['Ferrari Enzo V12', 'Supercar', 'supercar', 660, 1365, 380000, '#dc2626', 'RWD'],
+      ['Ferrari 458 Speciale', 'Supercar', 'supercar', 605, 1395, 220000, '#ef4444', 'RWD'],
+      ['Ferrari 296 GTB Assetto Fiorano', 'Supercar', 'supercar', 830, 1470, 260000, '#dc2626', 'RWD'],
+      ['Ferrari F50 GT1', 'Supercar', 'gt3', 750, 910, 520000, '#ef4444', 'RWD'],
+      ['Lamborghini Revuelto V12 Hybrid', 'Supercar', 'hyper', 1015, 1772, 370000, '#f97316', 'AWD'],
+      ['Lamborghini Huracán STO', 'Supercar', 'gt3', 640, 1339, 250000, '#38bdf8', 'RWD'],
+      ['Lamborghini Aventador SVJ 63', 'Supercar', 'gt3', 770, 1525, 340000, '#84cc16', 'AWD'],
+      ['Lamborghini Sesto Elemento', 'Supercar', 'supercar', 570, 999, 450000, '#334155', 'AWD'],
+      ['Lamborghini Veneno Roadster', 'Supercar', 'hyper', 750, 1490, 580000, '#64748b', 'AWD'],
+      ['Lamborghini Murciélago LP670 SV', 'Supercar', 'gt3', 670, 1565, 290000, '#facc15', 'AWD'],
+      ['Lamborghini Countach LPI 800-4', 'Supercar', 'supercar', 814, 1595, 390000, '#f8fafc', 'AWD'],
+      ['Lamborghini Diablo GT', 'Supercar', 'supercar', 575, 1460, 260000, '#f59e0b', 'RWD'],
+      ['McLaren P1 GTR', 'Supercar', 'hyper', 1000, 1440, 470000, '#eab308', 'RWD'],
+      ['McLaren Senna XP', 'Supercar', 'gt3', 800, 1198, 420000, '#2563eb', 'RWD'],
+      ['McLaren 765LT Coupe', 'Supercar', 'supercar', 765, 1339, 265000, '#84cc16', 'RWD'],
+      ['McLaren 750S', 'Supercar', 'supercar', 750, 1389, 245000, '#f97316', 'RWD'],
+      ['Maserati MC12 Corse', 'Supercar', 'hyper', 755, 1150, 490000, '#1d4ed8', 'RWD'],
+      ['Ford GT Mk IV Track', 'Supercar', 'hyper', 800, 1260, 380000, '#dc2626', 'RWD'],
+      ['Saleen S7 Twin-Turbo', 'Supercar', 'hyper', 750, 1338, 320000, '#f97316', 'RWD'],
+      ['Alfa Romeo 33 Stradale (2025)', 'Supercar', 'supercar', 620, 1500, 295000, '#b91c1c', 'RWD'],
+      ['Ferrari 12Cilindri V12 (2025)', 'Supercar', 'coupe', 830, 1560, 330000, '#dc2626', 'RWD'],
+      ['Lamborghini Gallardo LP570 Superleggera', 'Supercar', 'supercar', 570, 1340, 165000, '#84cc16', 'AWD'],
+      ['McLaren 600LT Top-Exit Exhaust', 'Supercar', 'supercar', 600, 1356, 185000, '#a855f7', 'RWD'],
+      ['Aston Martin DBS 770 Ultimate', 'Supercar', 'coupe', 770, 1845, 275000, '#064e3b', 'RWD'],
+
+      // === US MUSCLE & V8 (24) ===
+      ['Dodge Viper ACR Extreme Aero', 'Muscle', 'gt3', 645, 1530, 175000, '#ef4444', 'RWD'],
+      ['Dodge Challenger SRT Demon 170', 'Muscle', 'coupe', 1025, 1940, 165000, '#7f1d1d', 'RWD'],
+      ['Dodge Charger SRT Hellcat Redeye', 'Muscle', 'sedan', 797, 2080, 92000, '#a855f7', 'RWD'],
+      ['Chevrolet Corvette C8 ZR1 (1064HP)', 'Muscle', 'gt3', 1064, 1665, 210000, '#eab308', 'RWD'],
+      ['Chevrolet Corvette C8 Z06 GT3.R', 'Muscle', 'gt3', 670, 1560, 138000, '#38bdf8', 'RWD'],
+      ['Chevrolet Corvette C7 ZR1', 'Muscle', 'gt3', 755, 1598, 132000, '#f97316', 'RWD'],
+      ['Chevrolet Camaro ZL1 1LE', 'Muscle', 'gt3', 650, 1733, 86000, '#1e40af', 'RWD'],
+      ['Ford Mustang GTD (815HP)', 'Muscle', 'gt3', 815, 1800, 240000, '#475569', 'RWD'],
+      ['Ford Mustang Shelby GT500 Code Red', 'Muscle', 'coupe', 1300, 1890, 225000, '#dc2626', 'RWD'],
+      ['Ford Mustang Hoonicorn RTR V2', 'Muscle', 'gt3', 1400, 1360, 350000, '#090d16', 'AWD'],
+      ['1969 Dodge Charger R/T 426 Hemi', 'Muscle', 'coupe', 425, 1650, 95000, '#090d16', 'RWD'],
+      ['1967 Shelby GT500 Eleanor', 'Muscle', 'coupe', 400, 1490, 145000, '#64748b', 'RWD'],
+      ['Cadillac CT5-V Blackwing', 'Muscle', 'sedan', 668, 1870, 98000, '#06b6d4', 'RWD'],
+      ['Plymouth Superbird 426 Nascar', 'Muscle', 'gt3', 425, 1740, 155000, '#38bdf8', 'RWD'],
+      ['Buick GNX Grand National', 'Muscle', 'coupe', 300, 1560, 82000, '#000000', 'RWD'],
+      ['Pontiac Firebird Trans Am Smokey', 'Muscle', 'coupe', 290, 1610, 58000, '#090d16', 'RWD'],
+      ['Chevrolet Chevelle SS 454', 'Muscle', 'coupe', 450, 1690, 74000, '#dc2626', 'RWD'],
+      ['Ford GT40 Mk II LeMans 1966', 'Muscle', 'supercar', 485, 1217, 420000, '#090d16', 'RWD'],
+      ['Shelby Cobra 427 S/C', 'Muscle', 'coupe', 485, 1068, 230000, '#1d4ed8', 'RWD'],
+      ['Lucid Air Sapphire Tri-Motor', 'Muscle', 'sedan', 1234, 2420, 215000, '#1e3a8a', 'AWD'],
+      ['1970 Plymouth Barracuda Hemi Cuda', 'Muscle', 'coupe', 425, 1620, 118000, '#84cc16', 'RWD'],
+      ['Chevrolet Corvette C6 Z06 7.0L LS7', 'Muscle', 'coupe', 512, 1420, 68000, '#facc15', 'RWD'],
+      ['Ford Mustang Boss 429 (1969)', 'Muscle', 'coupe', 385, 1640, 135000, '#111827', 'RWD'],
+      ['Cadillac CTS-V Wagon Supercharged', 'Muscle', 'wagon', 564, 1990, 72000, '#475569', 'RWD'],
+
+      // === EURO HOT-HATCH & TRACK SPECIALS (28) ===
+      ['VW Golf 8 R 20 Years Edition', 'Euro', 'hatch', 333, 1555, 48000, '#2563eb', 'AWD'],
+      ['VW Golf 7 GTI Clubsport S', 'Euro', 'hatch', 310, 1285, 36000, '#f8fafc', 'FWD'],
+      ['VW Golf 2 VR6 BiTurbo 1100HP', 'Euro', 'hatch', 1100, 1120, 98000, '#1e293b', 'AWD'],
+      ['VW Golf 4 R32 Kompressor', 'Euro', 'hatch', 420, 1460, 42000, '#1d4ed8', 'AWD'],
+      ['VW Golf W12-650 Concept (Wörthersee!)', 'Euro', 'hatch', 650, 1575, 185000, '#f8fafc', 'RWD'],
+      ['VW Scirocco R20T Tracktool', 'Euro', 'hatch', 380, 1320, 34000, '#10b981', 'FWD'],
+      ['KTM X-Bow GT-XR (Austrian Hero!)', 'Euro', 'hyper', 500, 1130, 265000, '#f97316', 'RWD'],
+      ['Renault Mégane RS Trophy-R', 'Euro', 'hatch', 300, 1306, 46000, '#facc15', 'FWD'],
+      ['Renault Clio V6 Phase 2 Mid-Engine', 'Euro', 'hatch', 255, 1400, 62000, '#2563eb', 'RWD'],
+      ['Renault R5 Turbo 2 Maxi Rally', 'Euro', 'hatch', 350, 910, 115000, '#ef4444', 'RWD'],
+      ['Ford Focus RS Mk3 Drift-Mode', 'Euro', 'hatch', 350, 1524, 38000, '#06b6d4', 'AWD'],
+      ['Ford Escort RS Cosworth', 'Euro', 'gt3', 310, 1275, 76000, '#1d4ed8', 'AWD'],
+      ['Alfa Romeo Giulia GTAm', 'Euro', 'gt3', 540, 1520, 168000, '#dc2626', 'RWD'],
+      ['Lancia Delta HF Integrale Evo II', 'Euro', 'hatch', 290, 1340, 94000, '#eab308', 'AWD'],
+      ['Lancia Stratos HF Alitalia', 'Euro', 'supercar', 280, 980, 195000, '#16a34a', 'RWD'],
+      ['Lancia 037 Rally Gruppe B', 'Euro', 'gt3', 325, 960, 240000, '#f8fafc', 'RWD'],
+      ['Peugeot 205 Turbo 16 Evo 2', 'Euro', 'hatch', 450, 910, 180000, '#f8fafc', 'AWD'],
+      ['Volvo 850 T-5R BTCC Kombi', 'Euro', 'wagon', 340, 1390, 54000, '#fde047', 'FWD'],
+      ['Skoda Octavia RS 245 500HP Tuned', 'Euro', 'wagon', 500, 1480, 45000, '#16a34a', 'FWD'],
+      ['Cupra Formentor VZ5 5-Zyl', 'Euro', 'suv', 390, 1683, 56000, '#b45309', 'AWD'],
+      ['Ariel Atom V8 500', 'Euro', 'hyper', 500, 550, 165000, '#eab308', 'RWD'],
+      ['BAC Mono R Single-Seater', 'Euro', 'hyper', 343, 555, 175000, '#f8fafc', 'RWD'],
+      ['Radical SR10 XXR Track', 'Euro', 'hyper', 425, 725, 158000, '#ef4444', 'RWD'],
+      ['Lotus Exige Cup 430', 'Euro', 'gt3', 430, 1093, 98000, '#10b981', 'RWD'],
+      ['VW Golf 1 GTI Pirelli 16V Weber', 'Euro', 'hatch', 210, 840, 39000, '#dc2626', 'FWD'],
+      ['VW Corrado VR6 Turbo Custom', 'Euro', 'coupe', 480, 1210, 44000, '#6d28d9', 'FWD'],
+      ['Seat Leon Cupra R ST ABT', 'Euro', 'wagon', 370, 1540, 41000, '#475569', 'AWD'],
+      ['Opel Lotus Omega 3.6 BiTurbo', 'Euro', 'sedan', 377, 1690, 88000, '#064e3b', 'RWD'],
+
+      // === PERFORMANCE SUVS & OFFROAD (13) ===
+      ['Lamborghini Urus Performante', 'SUV', 'suv', 666, 2150, 235000, '#facc15', 'AWD'],
+      ['Ferrari Purosangue V12', 'SUV', 'suv', 725, 2033, 340000, '#dc2626', 'AWD'],
+      ['Aston Martin DBX707', 'SUV', 'suv', 707, 2245, 215000, '#065f46', 'AWD'],
+      ['Dodge Durango SRT Hellcat', 'SUV', 'suv', 710, 2490, 94000, '#475569', 'AWD'],
+      ['Jeep Grand Cherokee Trackhawk 1000HP', 'SUV', 'suv', 1000, 2430, 128000, '#991b1b', 'AWD'],
+      ['Ford F-150 Raptor R V8', 'SUV', 'suv', 700, 2700, 105000, '#ea580c', 'AWD'],
+      ['RAM 1500 TRX Mammoth 1000', 'SUV', 'suv', 1012, 2880, 138000, '#1e293b', 'AWD'],
+      ['Range Rover Sport SV Edition One', 'SUV', 'suv', 635, 2485, 168000, '#334155', 'AWD'],
+      ['Tesla Cybertruck Cyberbeast', 'SUV', 'suv', 845, 3100, 112000, '#94a3b8', 'AWD'],
+      ['Puch G 300 GD Austrian Legend', 'SUV', 'suv', 220, 2150, 42000, '#15803d', 'AWD'],
+      ['Porsche Macan Turbo Electric (2025)', 'SUV', 'suv', 639, 2405, 114000, '#7c3aed', 'AWD'],
+      ['Alfa Romeo Stelvio Quadrifoglio', 'SUV', 'suv', 520, 1850, 89000, '#dc2626', 'AWD'],
+      ['Bowler EXR-S Rally Raid V8', 'SUV', 'suv', 550, 1800, 145000, '#f97316', 'AWD'],
+
+      // === FUN, MEME & KULT-SWAPS (13) -> ERGIBT EXAKT 216 FAHRZEUGE! ===
+      ['Fiat Multipla 1000HP W16-Swap', 'Cult', 'cult', 1000, 1280, 75000, '#f97316', 'AWD'],
+      ['TukTuk Hayabusa 1300R Turbo', 'Cult', 'cult', 420, 480, 45000, '#06b6d4', 'RWD'],
+      ['Racing-Rasenmäher V8 BiTurbo', 'Cult', 'cult', 650, 390, 55000, '#16a34a', 'RWD'],
+      ['Puch Maxi N 125cc Nitro-Umbau', 'Cult', 'cult', 95, 140, 18000, '#eab308', 'RWD'],
+      ['Beta RR Supermoto Track-Quad', 'Cult', 'cult', 180, 260, 28000, '#ef4444', 'RWD'],
+      ['DHL Lieferwagen V10 Nordschleife', 'Cult', 'suv', 680, 1680, 69000, '#facc15', 'AWD'],
+      ['Ford Transit Supervan 4 (2000HP)', 'Cult', 'suv', 2000, 1680, 250000, '#1d4ed8', 'AWD'],
+      ['Peel P50 Hayabusa Dragster', 'Cult', 'cult', 310, 220, 39000, '#ec4899', 'RWD'],
+      ['Trabant 601 RS3 5-Zylinder Swap', 'Cult', 'cult', 580, 820, 48000, '#38bdf8', 'AWD'],
+      ['Polizei-Interceptor Bugatti', 'Cult', 'hyper', 1600, 1950, 499000, '#1e3a8a', 'AWD'],
+      ['Renault Espace F1 V10 (Williams)', 'Cult', 'suv', 820, 1300, 320000, '#facc15', 'RWD'],
+      ['VW T1 Bulli Porsche 993 BiTurbo', 'Cult', 'suv', 640, 1450, 135000, '#ef4444', 'RWD'],
+      ['Stark Varg Electric Supermoto-Kart', 'Cult', 'cult', 360, 290, 62000, '#dc2626', 'RWD']
     ];
 
+    const CARS = RAW_CAR_CATALOG.map((row, idx) => ({
+      id: 'car_' + idx,
+      name: row[0],
+      brand: row[1],
+      bodyType: row[2],
+      baseHp: row[3],
+      weight: row[4],
+      price: row[5],
+      color: row[6],
+      drivetrain: row[7],
+      length: row[2] === 'wagon' || row[2] === 'suv' ? 4.85 : row[2] === 'cult' ? 3.2 : 4.5,
+      width: row[2] === 'hyper' || row[2] === 'gt3' ? 2.02 : row[2] === 'cult' ? 1.55 : 1.88,
+      wing: row[2] === 'gt3' || row[2] === 'hyper'
+    }));
+
+    // --- 2. 6 SPIELMODI ---
     const GAME_MODES = [
-      { id: 'circuit', name: '🏁 Circuit (3 Runden)', desc: 'Rennen gegen 3 KI-Rivalen & P2P' },
-      { id: 'drift', name: '💨 Drift Touge', desc: 'Sammle maximale Querbeschleunigungs-Punkte' },
-      { id: 'drag', name: '🚦 1/4 Mile Drag', desc: 'Christmas-Tree Ampel & Launch Control' },
-      { id: 'timeattack', name: '⏱️ Time Attack', desc: 'Solo-Rekordjagd gegen die Uhr' }
+      { id: 'circuit', name: '🏁 Circuit Pro', desc: 'Sauberes Rennen ohne Fallen/Pickups', chaos: false },
+      { id: 'chaos', name: '💣 Chaos Mayhem', desc: 'EXKLUSIV: Öl-Fallen, Boosts & Pickups!', chaos: true },
+      { id: 'police', name: '🚓 Police & Blitzer', desc: 'Polizei-Verfolgung & Radarfallen', chaos: false },
+      { id: 'drift', name: '💨 Drift Touge King', desc: 'Drift-Winkel, Qualm & Kombo-Multiplikator', chaos: false },
+      { id: 'drag', name: '🚦 1/4 Mile Drag', desc: 'Ampel-Start & Launch Control', chaos: false },
+      { id: 'timeattack', name: '⏱️ Time Attack', desc: 'Solo-Rekordjagd auf freier Ideallinie', chaos: false }
     ];
 
+    // --- 3. 10 KOMPLEXE 3D-STRECKEN MIT EIGENEN MEGA-LANDMARKS ---
     const TRACKS = [
-      { id: 'woerthersee', name: '🇦🇹 Wörthersee Alpine Tour', sky: 0x1e3a8a, ground: 0x14532d, road: 0x1e293b, radiusX: 210, radiusZ: 145, complexity: 2, isDrag: false, water: true },
-      { id: 'sunset', name: '🌴 Sunset Coast Highway', sky: 0x7c2d12, ground: 0x451a03, road: 0x1f2937, radiusX: 220, radiusZ: 130, complexity: 1, isDrag: false },
-      { id: 'neotokyo', name: '🌃 Neo-Tokyo Shuto', sky: 0x090d16, ground: 0x0f172a, road: 0x111827, radiusX: 200, radiusZ: 155, complexity: 3, isDrag: false },
-      { id: 'akina', name: '⛰️ Mount Akina Touge', sky: 0x0f172a, ground: 0x1e293b, road: 0x27272a, radiusX: 185, radiusZ: 150, complexity: 4, isDrag: false },
-      { id: 'novagp', name: '🏎️ Nova GP Circuit', sky: 0x0c4a6e, ground: 0x064e3b, road: 0x1e293b, radiusX: 235, radiusZ: 160, complexity: 2, isDrag: false },
-      { id: 'shibuya', name: '🏮 Shibuya Drift Arena', sky: 0x1e1b4b, ground: 0x090d16, road: 0x18181b, radiusX: 150, radiusZ: 125, complexity: 3, isDrag: false },
-      { id: 'pcrdrag', name: '🚦 PCR Pro 1/4 Mile Drag', sky: 0x111827, ground: 0x1f2937, road: 0x0f172a, radiusX: 400, radiusZ: 20, complexity: 0, isDrag: true },
-      { id: 'airfield', name: '✈️ Airfield Highspeed Strip', sky: 0x1e293b, ground: 0x334155, road: 0x1e293b, radiusX: 500, radiusZ: 25, complexity: 0, isDrag: true }
+      { id: 'woerthersee', name: '🇦🇹 Wörthersee & Pyramidenkogel', sky: 0x0c4a6e, ground: 0x14532d, road: 0x1e293b, rx: 245, rz: 165, f1: 2, f2: 3, amp1: 35, amp2: 18, hills: 5.5, isDrag: false },
+      { id: 'nordschleife', name: '🇩🇪 Nürburgring Nordschleife GP', sky: 0x0f172a, ground: 0x064e3b, road: 0x1e293b, rx: 280, rz: 190, f1: 3, f2: 5, amp1: 42, amp2: 24, hills: 9.5, isDrag: false },
+      { id: 'tokyoc1', name: '🇯🇵 Tokyo Shuto C1 Midnight', sky: 0x050811, ground: 0x090d16, road: 0x111827, rx: 235, rz: 170, f1: 2, f2: 4, amp1: 32, amp2: 20, hills: 4.0, isDrag: false },
+      { id: 'akina', name: '⛰️ Mount Akina Touge Switchbacks', sky: 0x090d16, ground: 0x1e293b, road: 0x27272a, rx: 215, rz: 160, f1: 4, f2: 6, amp1: 38, amp2: 22, hills: 11.5, isDrag: false },
+      { id: 'monaco', name: '🇲🇨 Monaco Harbor & Tunnel GP', sky: 0x0369a1, ground: 0x1e293b, road: 0x1f2937, rx: 225, rz: 145, f1: 3, f2: 2, amp1: 28, amp2: 16, hills: 3.5, isDrag: false },
+      { id: 'grossglockner', name: '❄️ Kärnten Großglockner Pass', sky: 0x1e293b, ground: 0xe2e8f0, road: 0x334155, rx: 255, rz: 175, f1: 3, f2: 4, amp1: 40, amp2: 20, hills: 12.5, isDrag: false },
+      { id: 'nevada', name: '🏜️ Area-51 Canyon Highspeed', sky: 0x7c2d12, ground: 0x78350f, road: 0x1c1917, rx: 295, rz: 185, f1: 2, f2: 2, amp1: 25, amp2: 12, hills: 6.0, isDrag: false },
+      { id: 'shibuya', name: '🏮 Shibuya Neon Drift Arena', sky: 0x1e1b4b, ground: 0x090d16, road: 0x18181b, rx: 180, rz: 148, f1: 3, f2: 5, amp1: 28, amp2: 18, hills: 1.5, isDrag: false },
+      { id: 'autobahn', name: '🛣️ Autobahn No-Limit (450+ KMH)', sky: 0x0c4a6e, ground: 0x14532d, road: 0x0f172a, rx: 380, rz: 215, f1: 1, f2: 2, amp1: 15, amp2: 10, hills: 2.0, isDrag: false },
+      { id: 'santapod', name: '🚦 Santa Pod 1/4 Mile Dragstrip', sky: 0x090d16, ground: 0x1e293b, road: 0x0f172a, rx: 450, rz: 20, f1: 0, f2: 0, amp1: 0, amp2: 0, hills: 0, isDrag: true }
     ];
 
+    // --- 4. 12 TUNING-KATEGORIEN ---
     const TUNING_CATEGORIES = [
       {
-        id: 'engine', name: '1. Motoren', icon: '⚙️',
+        id: 'engine', name: '1. Engine-Swap', icon: '⚙️',
         items: [
-          { id: 'eng_stock', name: 'Serien-Motorblock', hp: 0, weight: 0, price: 0 },
-          { id: 'eng_k20a', name: 'Honda K20A Type-R (9000 RPM)', hp: 110, weight: -25, price: 8500 },
-          { id: 'eng_rb26', name: 'Nissan RB26DETT Inline-6', hp: 240, weight: 15, price: 18000 },
-          { id: 'eng_2jz', name: 'Toyota 2JZ-GTE 3.0L Forged', hp: 330, weight: 20, price: 24000 },
-          { id: 'eng_vr38', name: 'VR38DETT GT-R Nismo Block', hp: 460, weight: 10, price: 38000 },
-          { id: 'eng_f136', name: 'Ferrari F136 4.5L V8 Screamer', hp: 550, weight: -15, price: 54000 },
-          { id: 'eng_spoonv10', name: 'Spoon 5.2L Titanium Formula V10', hp: 720, weight: -40, price: 82000 }
+          { id: 'eng_stock', name: 'Original Werks-Motor', hp: 0, weight: 0, price: 0 },
+          { id: 'eng_daza', name: 'Audi 2.5L TFSI DAZA 5-Zylinder', hp: 140, weight: -15, price: 11000 },
+          { id: 'eng_2jz', name: 'Toyota 2JZ-GTE 3.4L Stroker', hp: 290, weight: 10, price: 22000 },
+          { id: 'eng_ea825', name: 'Audi RS6 4.0L V8 BiTurbo Stage 3', hp: 380, weight: 5, price: 32000 },
+          { id: 'eng_vr38', name: 'GT-R VR38DETT GT3 Billet Block', hp: 490, weight: -10, price: 44000 },
+          { id: 'eng_f136', name: 'Ferrari V8 / Porsche Flat-6 9000RPM', hp: 580, weight: -35, price: 62000 },
+          { id: 'eng_spoonv10', name: 'Formula 5.2L V10 Screamer', hp: 760, weight: -50, price: 89000 },
+          { id: 'eng_w16', name: 'Bugatti 8.0L W16 Quad-Turbo Swap', hp: 1100, weight: 45, price: 145000 }
         ]
       },
       {
-        id: 'turbo', name: '2. Turbos', icon: '🐌',
+        id: 'turbo', name: '2. Aufladung', icon: '🐌',
         items: [
-          { id: 'trb_none', name: 'Sauger / Serie', hp: 0, weight: 0, price: 0 },
-          { id: 'trb_street', name: 'Garrett GTX3582R Street', hp: 95, weight: 8, price: 6500 },
-          { id: 'trb_reddy', name: 'Reddy T88H-38GK Gold Spec', hp: 220, weight: 12, price: 16500 },
-          { id: 'trb_diamond', name: 'Apex Quad-Turbo Billet 42 PSI', hp: 410, weight: 18, price: 34000 }
+          { id: 'trb_stock', name: 'Serien-Ansaugung / Lader', hp: 0, weight: 0, price: 0 },
+          { id: 'trb_hybrid', name: 'TTE888 Hybrid-Turbolader Upgrade', hp: 120, weight: 4, price: 7500 },
+          { id: 'trb_whipple', name: '3.8L Whipple Twin-Screw Kompressor', hp: 230, weight: 14, price: 16000 },
+          { id: 'trb_garrett', name: 'Garrett G42-1450 Big Single Turbo', hp: 360, weight: 8, price: 28000 },
+          { id: 'trb_quad', name: 'Precision 62 PSI Quad-Turbo Setup', hp: 540, weight: 16, price: 48000 }
         ]
       },
       {
-        id: 'exhaust', name: '3. Auspuff', icon: '🔥',
+        id: 'exhaust', name: '3. Auspuff & Flammen', icon: '🔥',
         items: [
-          { id: 'exh_stock', name: 'Serien-Abgasanlage', hp: 0, weight: 0, price: 0 },
-          { id: 'exh_catback', name: 'Tomei Expreme Ti Titanium', hp: 35, weight: -12, price: 3200 },
-          { id: 'exh_hood', name: 'Side-Exit Flame-Spitter Pipe', hp: 75, weight: -22, price: 7800 }
+          { id: 'exh_stock', name: 'Serien-Abgasanlage (OPF)', hp: 0, weight: 0, price: 0 },
+          { id: 'exh_milltek', name: 'Milltek Non-Resonated Downpipe', hp: 35, weight: -10, price: 3400 },
+          { id: 'exh_akrapovic', name: 'Akrapovič Evolution Line Titanium', hp: 65, weight: -24, price: 8900 },
+          { id: 'exh_hood', name: 'Straight-Pipe Flame-Spitter (ALS!)', hp: 110, weight: -32, price: 14500 }
         ]
       },
       {
-        id: 'ecu', name: '4. ECU', icon: '💻',
+        id: 'ecu', name: '4. ECU & Popcorn', icon: '💻',
         items: [
-          { id: 'ecu_stock', name: 'Standard-Steuergerät', hp: 0, weight: 0, price: 0 },
-          { id: 'ecu_stage2', name: 'Hondata / Haltech Stage 2 Map', hp: 45, weight: 0, price: 2900 },
-          { id: 'ecu_motec', name: 'MoTeC M150 + 2-Step Anti-Lag', hp: 115, weight: -2, price: 9500 }
+          { id: 'ecu_stock', name: 'Serien-Software (Vmax 250)', hp: 0, weight: 0, price: 0 },
+          { id: 'ecu_vmax', name: 'Stage 2 + Vmax Aufhebung + Pops', hp: 65, weight: 0, price: 3200 },
+          { id: 'ecu_motec', name: 'MoTeC M150 + Rolling Anti-Lag', hp: 145, weight: -3, price: 11500 },
+          { id: 'ecu_syvecs', name: 'Syvecs E85 FlexFuel Race-Map', hp: 220, weight: -5, price: 19500 }
         ]
       },
       {
-        id: 'intercooler', name: '5. Kühler', icon: '❄️',
+        id: 'gearbox', name: '5. Getriebe', icon: '🕹️',
         items: [
-          { id: 'ic_stock', name: 'OEM Ladeluftkühler', hp: 0, weight: 0, price: 0 },
-          { id: 'ic_fmic', name: 'Mishimoto Monster FMIC', hp: 40, weight: 4, price: 2400 },
-          { id: 'ic_cryo', name: 'CO2 Cryo-Spray Race Core', hp: 85, weight: 2, price: 6200 }
+          { id: 'gbx_stock', name: 'Serien-Schaltgetriebe', hp: 0, weight: 0, price: 0 },
+          { id: 'gbx_dsg', name: 'DQ500 / ZF 8HP Stage 3 Blitz-Shift', hp: 45, weight: -5, price: 5800 },
+          { id: 'gbx_seq', name: 'Xtrac 6-Gang Sequential Dogbox', hp: 95, weight: -28, price: 16500 }
         ]
       },
       {
-        id: 'nos', name: '6. N2O', icon: '🧪',
+        id: 'intercooler', name: '6. Kühlung & Meth', icon: '❄️',
         items: [
-          { id: 'nos_stock', name: 'Standard 50HP Dry-Shot', hp: 20, weight: 5, price: 0 },
-          { id: 'nos_wet', name: 'NX 150HP Direct-Port Wet Shot', hp: 70, weight: 8, price: 4500 },
-          { id: 'nos_demon', name: 'Dual-Bottle 300HP Purge Kit', hp: 140, weight: 12, price: 11000 }
+          { id: 'ic_stock', name: 'Serien-Ladeluftkühler', hp: 0, weight: 0, price: 0 },
+          { id: 'ic_wagner', name: 'Wagner Competition Evo 3 FMIC', hp: 45, weight: 2, price: 2900 },
+          { id: 'ic_meth', name: 'Snow Performance Wasser-Methanol', hp: 110, weight: 4, price: 7800 }
         ]
       },
       {
-        id: 'tires', name: '7. Reifen', icon: '🛞',
+        id: 'nos', name: '7. Lachgas (N2O)', icon: '🧪',
         items: [
-          { id: 'tir_street', name: 'Street Sport Compound', hp: 15, weight: 0, price: 0 },
-          { id: 'tir_r888r', name: 'Toyo Proxes R888R Semi-Slick', hp: 55, weight: -6, price: 3800 },
-          { id: 'tir_drag', name: 'Mickey Thompson Wrinkle-Wall', hp: 110, weight: -10, price: 8200 }
+          { id: 'nos_stock', name: '50HP Street N2O System', hp: 25, weight: 5, price: 0 },
+          { id: 'nos_wet', name: 'NX 200HP Direct-Port Wet-Shot', hp: 90, weight: 8, price: 5400 },
+          { id: 'nos_dual', name: 'Dual-Bottle 400HP Pro-Mod N2O', hp: 185, weight: 12, price: 13500 }
         ]
       },
       {
-        id: 'suspension', name: '8. Fahrwerk', icon: '🔩',
+        id: 'tires', name: '8. Reifen', icon: '🛞',
         items: [
-          { id: 'sus_stock', name: 'OEM Stoßdämpfer', hp: 0, weight: 0, price: 0 },
-          { id: 'sus_kw', name: 'KW Variant 3 Gewindefahrwerk', hp: 30, weight: -14, price: 4200 },
-          { id: 'sus_air', name: 'AirLift 3P Performance Track', hp: 60, weight: -18, price: 7900 }
+          { id: 'tir_street', name: 'Michelin Pilot Sport 4S', hp: 15, weight: 0, price: 0 },
+          { id: 'tir_cup2r', name: 'Michelin Pilot Sport Cup 2 R', hp: 65, weight: -8, price: 4200 },
+          { id: 'tir_slick', name: 'Pirelli P-Zero GT3 Racing Slick', hp: 130, weight: -16, price: 9800 }
         ]
       },
       {
-        id: 'aero', name: '9. Aero-Kit', icon: '🪶',
+        id: 'suspension', name: '9. Fahrwerk', icon: '🔩',
         items: [
-          { id: 'aer_stock', name: 'Serien-Karosserie', hp: 0, weight: 0, price: 0, bigWing: false },
-          { id: 'aer_gt', name: 'APR Carbon Swan-Neck GT Wing', hp: 45, weight: -15, price: 5400, bigWing: true },
-          { id: 'aer_timeattack', name: 'Pandem Widebody + Time-Attack Aero', hp: 95, weight: -45, price: 14500, bigWing: true }
+          { id: 'sus_stock', name: 'Serien-Fahrwerk', hp: 0, weight: 0, price: 0 },
+          { id: 'sus_kwv4', name: 'KW V4 Clubsport 3-Way', hp: 40, weight: -16, price: 5400 },
+          { id: 'sus_air', name: 'AirLift 3P Show & Track + Hydraulic', hp: 70, weight: -12, price: 8900 }
         ]
       },
       {
-        id: 'rims', name: '10. 3D-Felgen', icon: '✨',
+        id: 'brakes', name: '10. Keramik-Bremse', icon: '🛑',
         items: [
-          { id: 'rim_stock', name: 'OEM Silver Alloy', hp: 0, weight: 0, price: 0, rimColor: 0xcbd5e1 },
-          { id: 'rim_te37', name: 'Volk Racing TE37 Bronze', hp: 20, weight: -12, price: 3600, rimColor: 0xb45309 },
-          { id: 'rim_bbs', name: 'BBS LM Championship Gold', hp: 30, weight: -16, price: 5200, rimColor: 0xfacc15 },
-          { id: 'rim_carbon', name: 'Rotiform Carbon Aero Disc', hp: 45, weight: -24, price: 8900, rimColor: 0x38bdf8 }
+          { id: 'brk_stock', name: 'Stahl-Bremsanlage', hp: 0, weight: 0, price: 0 },
+          { id: 'brk_brembo', name: 'Brembo GT 6-Kolben Rot', hp: 25, weight: -14, price: 4600 },
+          { id: 'brk_ceramic', name: 'Porsche/RS Carbon-Keramik (PCCB)', hp: 55, weight: -34, price: 11800 }
+        ]
+      },
+      {
+        id: 'aero', name: '11. Aero & Bodykit', icon: '🪶',
+        items: [
+          { id: 'aer_stock', name: 'Serien-Optik', hp: 0, weight: 0, price: 0, bigWing: false },
+          { id: 'aer_abt', name: 'ABT / Manthey Carbon Aero-Paket', hp: 50, weight: -25, price: 7800, bigWing: true },
+          { id: 'aer_gt3', name: 'GT3 RS Swan-Neck + Carbon-Haube', hp: 110, weight: -65, price: 18500, bigWing: true }
+        ]
+      },
+      {
+        id: 'rims', name: '12. 3D-Felgen', icon: '✨',
+        items: [
+          { id: 'rim_stock', name: 'OEM Performance Silver', hp: 0, weight: 0, price: 0, rimColor: 0xcbd5e1 },
+          { id: 'rim_rsblack', name: 'RS Trapez-Design Schwarz-Glanz', hp: 20, weight: -10, price: 3200, rimColor: 0x1e293b },
+          { id: 'rim_bbs', name: 'BBS FI-R Mag-Gold Forged', hp: 35, weight: -20, price: 6800, rimColor: 0xfacc15 },
+          { id: 'rim_te37', name: 'Volk Racing TE37 Bronze', hp: 30, weight: -18, price: 5400, rimColor: 0xb45309 },
+          { id: 'rim_carbon', name: 'HRE CRBN Vollcarbon-Aero', hp: 55, weight: -32, price: 12500, rimColor: 0x38bdf8 }
         ]
       }
     ];
 
     const PAINT_COLORS = [
-      '#ef4444', '#f97316', '#f59e0b', '#10b981', '#06b6d4',
-      '#2563eb', '#6366f1', '#a855f7', '#ec4899', '#f8fafc', '#1e293b'
+      '#1e293b', '#ef4444', '#f97316', '#facc15', '#10b981', '#06b6d4',
+      '#2563eb', '#6366f1', '#a855f7', '#ec4899', '#f8fafc', '#475569', '#090d16'
     ];
 
-    // --- 2. SPIELSTAND & STATE ---
+    const WEATHER_PRESETS = [
+      { id: 'sunset', label: '☀️ Wetter: Sunset', ambient: 0.78, dir: 1.35, fogMult: 1.0 },
+      { id: 'day', label: '🌤️ Wetter: Klar', ambient: 0.95, dir: 1.5, fogMult: 0.6 },
+      { id: 'night', label: '🌙 Wetter: Nacht', ambient: 0.35, dir: 0.45, fogMult: 1.5 },
+      { id: 'rain', label: '🌧️ Wetter: Regen', ambient: 0.5, dir: 0.6, fogMult: 1.8 }
+    ];
+    let weatherIdx = 0;
+
+    // --- 5. SPIELSTAND & STATE ---
     const defaultSave = {
       authAccepted: false,
-      cash: 125000,
-      ownedCars: ['eg6'],
-      selectedCar: 'eg6',
+      cash: 185000,
+      ownedCars: ['car_0', 'car_70'], // RS6 Avant C8 & Civic EG6 ab Start kostenlos!
+      selectedCar: 'car_0',
       selectedMode: 'circuit',
       selectedTrack: 'woerthersee',
       selectedCat: 'engine',
       carConfigs: {}
     };
 
-    CARS.forEach(c => {
-      defaultSave.carConfigs[c.id] = {
-        paint: c.color,
-        neon: '#00f2fe',
-        rideHeight: 0,
-        camber: -2,
-        parts: {
-          engine: 'eng_stock', turbo: 'trb_none', exhaust: 'exh_stock',
-          ecu: 'ecu_stock', intercooler: 'ic_stock', nos: 'nos_stock',
-          tires: 'tir_street', suspension: 'sus_stock', aero: 'aer_stock', rims: 'rim_stock'
-        }
-      };
-    });
+    let state = JSON.parse(localStorage.getItem('novaRacerV5Save') || 'null') || defaultSave;
+    if (!state.ownedCars || state.ownedCars.length === 0) state.ownedCars = ['car_0', 'car_70'];
+    if (!CARS.find(c => c.id === state.selectedCar)) state.selectedCar = 'car_0';
 
-    let state = JSON.parse(localStorage.getItem('novaRacerV4Save') || 'null') || defaultSave;
-    // Merge falls neue Autos/Felder dazukamen
-    CARS.forEach(c => {
-      if (!state.carConfigs[c.id]) state.carConfigs[c.id] = JSON.parse(JSON.stringify(defaultSave.carConfigs[c.id]));
-    });
+    function ensureCarConfig(carId) {
+      const car = CARS.find(c => c.id === carId) || CARS[0];
+      if (!state.carConfigs[car.id]) {
+        state.carConfigs[car.id] = {
+          paint: car.color,
+          neon: '#00f2fe',
+          rideHeight: 0,
+          camber: -2,
+          roofBox: car.bodyType === 'wagon',
+          parts: {
+            engine: 'eng_stock', turbo: 'trb_stock', exhaust: 'exh_stock', ecu: 'ecu_stock',
+            gearbox: 'gbx_stock', intercooler: 'ic_stock', nos: 'nos_stock', tires: 'tir_street',
+            suspension: 'sus_stock', brakes: 'brk_stock', aero: 'aer_stock', rims: 'rim_stock'
+          }
+        };
+      }
+      return state.carConfigs[car.id];
+    }
+    ensureCarConfig(state.selectedCar);
 
     function saveGame() {
-      localStorage.setItem('novaRacerV4Save', JSON.stringify(state));
+      localStorage.setItem('novaRacerV5Save', JSON.stringify(state));
     }
 
-    // --- 3. WEB AUDIO SYNTHESIZER (MOTOR, TURBO, CRASH-FUNKEN) ---
+    // --- 6. WEB AUDIO SYNTHESIZER ---
     let audioCtx = null;
     function initAudio() {
       if (!audioCtx) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (AudioContext) audioCtx = new AudioContext();
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) audioCtx = new AC();
       }
+    }
+    function playBackfirePop() {
+      if (!audioCtx) return;
+      for (let i = 0; i < 3; i++) {
+        setTimeout(() => {
+          if (!audioCtx) return;
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(90 + Math.random() * 65, audioCtx.currentTime);
+          gain.gain.setValueAtTime(0.14, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.08);
+        }, i * 55);
+      }
+    }
+    function playHornSound() {
+      initAudio();
+      if (!audioCtx) return;
+      [440, 554].forEach(freq => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.32);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.32);
+      });
     }
     function playSparkSound() {
       if (!audioCtx) return;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(190 + Math.random() * 140, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(210 + Math.random() * 140, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start();
-      osc.stop(audioCtx.currentTime + 0.12);
-    }
-    function playBoostTone(freq = 520) {
-      if (!audioCtx) return;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(freq * 1.6, audioCtx.currentTime + 0.18);
-      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.18);
+      osc.stop(audioCtx.currentTime + 0.1);
     }
 
-    // --- 4. STATISTIK-BERECHNUNG FÜR AKTUELLES AUTO ---
+    // --- 7. FAHRZEUG-SPECS BERECHNEN ---
     function getCarStats(carId = state.selectedCar) {
       const car = CARS.find(c => c.id === carId) || CARS[0];
-      const cfg = state.carConfigs[car.id];
+      const cfg = ensureCarConfig(car.id);
       let hp = car.baseHp;
       let weight = car.weight;
       let bigWing = car.wing;
@@ -613,32 +1040,32 @@
         if (item.rimColor !== undefined) rimColor = item.rimColor;
       });
 
+      weight = Math.max(450, weight);
       const ratio = hp / (weight / 1000);
-      const pi = Math.min(999, Math.round(400 + ratio * 1.15));
-      const piClass = pi >= 900 ? 'X' : pi >= 800 ? 'S2' : pi >= 700 ? 'S1' : pi >= 600 ? 'A' : 'B';
-      const maxSpeedKmh = Math.min(435, Math.round(210 + Math.sqrt(hp) * 6.4));
+      const pi = Math.min(999, Math.round(430 + ratio * 0.92));
+      const piClass = pi >= 920 ? 'X' : pi >= 830 ? 'S2' : pi >= 720 ? 'S1' : pi >= 620 ? 'A' : 'B';
+      const maxSpeedKmh = Math.min(485, Math.round(215 + Math.sqrt(hp) * 6.8));
 
       return { car, cfg, hp, weight, pi, piClass, maxSpeedKmh, bigWing, rimColor };
     }
 
-    // --- 5. THREE.JS 3D-ENGINE: GARAGE & RENNSTRECKE ---
+    // --- 8. THREE.JS 3D-SZENE & REALISTISCHE KAROSSERIE-ARCHETYPEN ---
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x090d16);
-    scene.fog = new THREE.FogExp2(0x090d16, 0.0022);
+    scene.background = new THREE.Color(0x070a12);
+    scene.fog = new THREE.FogExp2(0x070a12, 0.0016);
 
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1500);
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2200);
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
 
-    // Lichter
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.78);
     scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0xfffbeb, 1.25);
-    dirLight.position.set(60, 120, 80);
+    const dirLight = new THREE.DirectionalLight(0xfffbeb, 1.35);
+    dirLight.position.set(70, 140, 90);
     dirLight.castShadow = true;
     scene.add(dirLight);
 
@@ -647,12 +1074,15 @@
 
     let playerMesh = null;
     let playerWheels = [];
-    let neonLight = null;
-    let cameraMode = 0; // 0 = Chase, 1 = Hood, 2 = Far
+    let playerFlameCones = [];
+    let cameraMode = 0;
     let inRace = false;
-    let garageOrbitAngle = 0.55;
+    let garageOrbitAngle = 0.65;
     let isDraggingGarage = false;
     let prevPointerX = 0;
+    let hopOffsetY = 0;
+    let flameTimer = 0;
+    let animatedProps = []; // Für rotierende Windräder, UFOs, Boote, Leuchtfeuer!
 
     container.addEventListener('pointerdown', e => {
       if (!inRace) { isDraggingGarage = true; prevPointerX = e.clientX; }
@@ -665,294 +1095,636 @@
     });
     window.addEventListener('pointerup', () => { isDraggingGarage = false; });
 
-    // 3D-Fahrzeug-Generator (mit PBR-Clearcoat, Camber, Ride-Height & GT-Wing)
-    function createCarMesh(carData, cfg, stats, isBot = false) {
+    function createCarMesh(carData, cfg, stats, isBot = false, isPolice = false) {
       const group = new THREE.Group();
-      const bodyColor = new THREE.Color(isBot ? PAINT_COLORS[Math.floor(Math.random() * PAINT_COLORS.length)] : cfg.paint);
+      const bodyColor = new THREE.Color(
+        isPolice ? '#0f172a' : isBot ? PAINT_COLORS[Math.floor(Math.random() * PAINT_COLORS.length)] : cfg.paint
+      );
 
-      const paintMat = new THREE.MeshStandardMaterial({
-        color: bodyColor,
-        metalness: 0.72,
-        roughness: 0.18
-      });
-      const darkMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.5, metalness: 0.4 });
-      const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
+      const paintMat = new THREE.MeshStandardMaterial({ color: bodyColor, metalness: 0.76, roughness: 0.16 });
+      const carbonMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.4, metalness: 0.5 });
+      const glassMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.08, metalness: 0.92 });
+      const chromeMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.95, roughness: 0.1 });
 
       const rideOffset = isBot ? 0 : (cfg.rideHeight || 0) * 0.005;
+      const W = carData.width;
+      const L = carData.length;
+      const bType = carData.bodyType;
+      const bodyH = bType === 'suv' ? 0.72 : bType === 'hyper' || bType === 'supercar' ? 0.44 : 0.54;
 
-      // Haupt-Chassis
-      const chassisGeo = new THREE.BoxGeometry(carData.width, 0.55, carData.length);
-      const chassis = new THREE.Mesh(chassisGeo, paintMat);
-      chassis.position.y = 0.52 + rideOffset;
+      const chassis = new THREE.Mesh(new THREE.BoxGeometry(W, bodyH, L), paintMat);
+      chassis.position.y = 0.48 + bodyH * 0.3 + rideOffset;
       chassis.castShadow = true;
       group.add(chassis);
 
-      // Kabine / Dach
-      const cabinGeo = new THREE.BoxGeometry(carData.width * 0.84, 0.46, carData.length * 0.52);
-      const cabin = new THREE.Mesh(cabinGeo, glassMat);
-      cabin.position.set(0, 0.96 + rideOffset, -0.15);
+      // Widebody-Radkästen
+      const archGeo = new THREE.BoxGeometry(W * 1.08, bodyH * 0.68, 0.96);
+      const archFront = new THREE.Mesh(archGeo, paintMat);
+      archFront.position.set(0, 0.46 + rideOffset, L * 0.32);
+      const archRear = new THREE.Mesh(archGeo, paintMat);
+      archRear.position.set(0, 0.48 + rideOffset, -L * 0.32);
+      group.add(archFront, archRear);
+
+      // Seitenschweller (Carbon Side Skirts)
+      const skirt = new THREE.Mesh(new THREE.BoxGeometry(W * 1.05, 0.08, L * 0.6), carbonMat);
+      skirt.position.set(0, 0.25 + rideOffset, 0);
+      group.add(skirt);
+
+      let cabinLen = L * 0.5;
+      let cabinZ = -0.12;
+      let cabinH = 0.45;
+      if (bType === 'wagon') {
+        cabinLen = L * 0.68;
+        cabinZ = -L * 0.12;
+        cabinH = 0.46;
+      } else if (bType === 'suv') {
+        cabinLen = L * 0.7;
+        cabinZ = -L * 0.1;
+        cabinH = 0.58;
+      } else if (bType === 'hyper' || bType === 'supercar') {
+        cabinLen = L * 0.44;
+        cabinZ = 0.05;
+        cabinH = 0.36;
+      } else if (bType === 'hatch') {
+        cabinLen = L * 0.58;
+        cabinZ = -L * 0.08;
+        cabinH = 0.47;
+      }
+
+      const cabin = new THREE.Mesh(new THREE.BoxGeometry(W * 0.84, cabinH, cabinLen), glassMat);
+      cabin.position.set(0, 0.5 + bodyH * 0.68 + cabinH * 0.4 + rideOffset, cabinZ);
       group.add(cabin);
 
-      // Front-Splitter
-      const splitter = new THREE.Mesh(new THREE.BoxGeometry(carData.width * 1.04, 0.08, 0.35), darkMat);
-      splitter.position.set(0, 0.28 + rideOffset, carData.length * 0.5);
-      group.add(splitter);
+      const roofTop = new THREE.Mesh(new THREE.BoxGeometry(W * 0.82, 0.06, cabinLen * 0.92), paintMat);
+      roofTop.position.set(0, cabin.position.y + cabinH * 0.5, cabinZ);
+      group.add(roofTop);
 
-      // Scheinwerfer & Rücklichter
+      // Optionale RS6 Ski-Dachbox
+      if (!isBot && cfg.roofBox) {
+        const boxMesh = new THREE.Mesh(new THREE.BoxGeometry(W * 0.48, 0.24, cabinLen * 0.78), carbonMat);
+        boxMesh.position.set(0, roofTop.position.y + 0.16, cabinZ - 0.05);
+        group.add(boxMesh);
+      }
+
+      // Polizei-Blaulichtbalken
+      if (isPolice) {
+        const barBase = new THREE.Mesh(new THREE.BoxGeometry(W * 0.7, 0.12, 0.25), chromeMat);
+        barBase.position.set(0, roofTop.position.y + 0.1, 0);
+        const blueL = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.14, 0.26), new THREE.MeshBasicMaterial({ color: 0x2563eb }));
+        blueL.position.set(-0.32, roofTop.position.y + 0.1, 0);
+        const redR = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.14, 0.26), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        redR.position.set(0.32, roofTop.position.y + 0.1, 0);
+        group.add(barBase, blueL, redR);
+      }
+
+      const grille = new THREE.Mesh(new THREE.BoxGeometry(W * 0.58, bodyH * 0.55, 0.06), carbonMat);
+      grille.position.set(0, 0.48 + rideOffset, L * 0.5 + 0.01);
+      const splitter = new THREE.Mesh(new THREE.BoxGeometry(W * 1.06, 0.07, 0.38), carbonMat);
+      splitter.position.set(0, 0.24 + rideOffset, L * 0.5);
+      group.add(grille, splitter);
+
       const headMat = new THREE.MeshBasicMaterial({ color: 0xe0f2fe });
       const tailMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e });
-      [-0.6, 0.6].forEach(xPos => {
-        const hl = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.12, 0.08), headMat);
-        hl.position.set(xPos, 0.58 + rideOffset, carData.length * 0.5 + 0.01);
+      [-W * 0.36, W * 0.36].forEach(xPos => {
+        const hl = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.11, 0.08), headMat);
+        hl.position.set(xPos, 0.58 + rideOffset, L * 0.5 + 0.01);
         group.add(hl);
+      });
+      const lightbar = new THREE.Mesh(new THREE.BoxGeometry(W * 0.88, 0.1, 0.06), tailMat);
+      lightbar.position.set(0, 0.62 + rideOffset, -L * 0.5 - 0.01);
+      group.add(lightbar);
 
-        const tl = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.12, 0.08), tailMat);
-        tl.position.set(xPos, 0.6 + rideOffset, -carData.length * 0.5 - 0.01);
-        group.add(tl);
+      // Auspuff + 3D-Backfire-Flammen
+      const flames = [];
+      [-W * 0.28, W * 0.28].forEach(xPos => {
+        const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.25, 12).rotateX(Math.PI / 2), chromeMat);
+        pipe.position.set(xPos, 0.3 + rideOffset, -L * 0.5 - 0.05);
+        group.add(pipe);
+
+        if (!isBot) {
+          const flameGeo = new THREE.ConeGeometry(0.14, 0.9, 8).rotateX(-Math.PI / 2);
+          const flameMat = new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0.92 });
+          const flame = new THREE.Mesh(flameGeo, flameMat);
+          flame.position.set(xPos, 0.3 + rideOffset, -L * 0.5 - 0.52);
+          flame.visible = false;
+          group.add(flame);
+          flames.push(flame);
+        }
       });
 
-      // GT-Spoiler falls verbaut
-      if (stats.bigWing) {
-        const wingMat = darkMat;
-        const standL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.45, 0.25), wingMat);
+      // GT3 RS Schwanenhals-Heckflügel
+      if (stats.bigWing && bType !== 'wagon') {
+        const standL = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.52, 0.28), carbonMat);
         const standR = standL.clone();
-        standL.position.set(-0.55, 0.95 + rideOffset, -carData.length * 0.44);
-        standR.position.set(0.55, 0.95 + rideOffset, -carData.length * 0.44);
-        const blade = new THREE.Mesh(new THREE.BoxGeometry(carData.width * 1.08, 0.07, 0.38), wingMat);
-        blade.position.set(0, 1.18 + rideOffset, -carData.length * 0.46);
+        standL.position.set(-W * 0.3, 0.95 + rideOffset, -L * 0.44);
+        standR.position.set(W * 0.3, 0.95 + rideOffset, -L * 0.44);
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(W * 1.12, 0.07, 0.4), carbonMat);
+        blade.position.set(0, 1.22 + rideOffset, -L * 0.46);
         group.add(standL, standR, blade);
       }
 
-      // 4 Räder mit Camber (Radsturz) & 3D-Felgenfarbe
-      const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.28, 20);
-      wheelGeo.rotateZ(Math.PI / 2);
+      // 4 Räder mit Bremsscheiben & Bremssätteln
+      const wheelGeo = new THREE.CylinderGeometry(0.39, 0.39, 0.3, 22).rotateZ(Math.PI / 2);
       const tireMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.85 });
-      const rimMat = new THREE.MeshStandardMaterial({ color: stats.rimColor || 0xcbd5e1, metalness: 0.85, roughness: 0.2 });
+      const rimMat = new THREE.MeshStandardMaterial({ color: stats.rimColor || 0xcbd5e1, metalness: 0.88, roughness: 0.18 });
+      const caliperMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
 
       const wheels = [];
       const wPositions = [
-        [-carData.width * 0.52, 0.38, carData.length * 0.33],
-        [carData.width * 0.52, 0.38, carData.length * 0.33],
-        [-carData.width * 0.52, 0.38, -carData.length * 0.33],
-        [carData.width * 0.52, 0.38, -carData.length * 0.33]
+        [-W * 0.53, 0.39, L * 0.32],
+        [W * 0.53, 0.39, L * 0.32],
+        [-W * 0.53, 0.39, -L * 0.32],
+        [W * 0.53, 0.39, -L * 0.32]
       ];
-      const camberRad = THREE.MathUtils.degToRad(isBot ? -2 : (cfg.camber || -2));
+      const camberRad = THREE.MathUtils.degToRad(isBot ? -1.5 : (cfg.camber || -2));
 
-      wPositions.forEach((pos, idx) => {
+      wPositions.forEach(pos => {
         const wGroup = new THREE.Group();
         const tire = new THREE.Mesh(wheelGeo, tireMat);
-        const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.3, 12).rotateZ(Math.PI / 2), rimMat);
-        wGroup.add(tire, rim);
+        const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.32, 12).rotateZ(Math.PI / 2), rimMat);
+        const caliper = new THREE.Mesh(new THREE.BoxGeometry(0.33, 0.16, 0.16), caliperMat);
+        caliper.position.set(0, 0.1, 0.1);
+        wGroup.add(tire, rim, caliper);
         wGroup.position.set(pos[0], pos[1], pos[2]);
         wGroup.rotation.z = pos[0] < 0 ? -camberRad : camberRad;
         group.add(wGroup);
         wheels.push(wGroup);
       });
 
-      // Unterboden-Neon
       if (!isBot) {
-        const nColor = new THREE.Color(cfg.neon || '#00f2fe');
-        neonLight = new THREE.PointLight(nColor, 2.2, 6);
-        neonLight.position.set(0, 0.18, 0);
-        group.add(neonLight);
+        const nLight = new THREE.PointLight(new THREE.Color(cfg.neon || '#00f2fe'), 2.5, 6.8);
+        nLight.position.set(0, 0.18, 0);
+        group.add(nLight);
       }
 
-      return { group, wheels };
+      return { group, wheels, flames };
     }
 
-    // Garage Showroom aufbauen
+    // --- 9. GARAGE SHOWROOM BAUEN ---
     function buildGarageScene() {
       inRace = false;
+      animatedProps = [];
       while (worldGroup.children.length > 0) worldGroup.remove(worldGroup.children[0]);
 
-      scene.background = new THREE.Color(0x070a12);
-      scene.fog = new THREE.FogExp2(0x070a12, 0.025);
+      scene.background = new THREE.Color(0x060911);
+      scene.fog = new THREE.FogExp2(0x060911, 0.022);
 
-      // Reflektierender Showroom-Boden
       const floor = new THREE.Mesh(
-        new THREE.CircleGeometry(28, 64),
-        new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.25, metalness: 0.6 })
+        new THREE.CircleGeometry(32, 64),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.2, metalness: 0.7 })
       );
       floor.rotation.x = -Math.PI / 2;
       floor.receiveShadow = true;
       worldGroup.add(floor);
 
-      // Leuchtender Dreh-Ring (Pixel Garage Podium)
+      // Doppelter Neon-Showroom-Ring
       const ring = new THREE.Mesh(
-        new THREE.RingGeometry(3.1, 3.35, 64),
+        new THREE.RingGeometry(3.2, 3.45, 64),
         new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide })
       );
       ring.rotation.x = -Math.PI / 2;
       ring.position.y = 0.02;
       worldGroup.add(ring);
 
-      // Neon-Deckenleuchten
+      const outerRing = new THREE.Mesh(
+        new THREE.RingGeometry(4.4, 4.5, 64),
+        new THREE.MeshBasicMaterial({ color: 0xf59e0b, side: THREE.DoubleSide })
+      );
+      outerRing.rotation.x = -Math.PI / 2;
+      outerRing.position.y = 0.02;
+      worldGroup.add(outerRing);
+
+      // Cyber-Showroom Säulen & Lichtbalken
       for (let i = -1; i <= 1; i++) {
-        const bar = new THREE.Mesh(
-          new THREE.BoxGeometry(1.4, 0.08, 7),
-          new THREE.MeshBasicMaterial({ color: 0xe0f2fe })
-        );
-        bar.position.set(i * 2.6, 5.2, 0);
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 7.5), new THREE.MeshBasicMaterial({ color: 0xe0f2fe }));
+        bar.position.set(i * 2.8, 5.4, 0);
         worldGroup.add(bar);
       }
 
       const stats = getCarStats();
-      const built = createCarMesh(stats.car, stats.cfg, stats, false);
+      const built = createCarMesh(stats.car, stats.cfg, stats, false, false);
       playerMesh = built.group;
       playerWheels = built.wheels;
+      playerFlameCones = built.flames;
       worldGroup.add(playerMesh);
     }
 
-    // --- 6. STRECKEN-GENERATOR INKL. DURCHGÄNGIGER 3D-LEITPLANKEN, WÖRTHERSEE & HINDERNISSEN ---
+    // --- 10. SPEKTAKULÄRE 3D-STRECKEN-GENERATOREN MIT MEGA-LANDMARKS ---
     let trackPoints = [];
-    let trackWidth = 15;
-    let trackObstacles = []; // Boosts, Pickups, Oil Traps
+    let trackWidth = 15.5;
+    let trackObstacles = [];
+    let speedCameras = [];
     let sparkParticles = [];
     let botCars = [];
 
-    function getPointOnTrack(t, track) {
+    function getComplexTrackPoint(t, track) {
       if (track.isDrag) {
-        return new THREE.Vector3(0, 0, -t * 950);
+        return new THREE.Vector3(0, 0, -t * 1050);
       }
-      const angle = t * Math.PI * 2;
-      const wave = Math.sin(angle * track.complexity) * 26;
-      const x = Math.cos(angle) * (track.radiusX + wave);
-      const z = Math.sin(angle) * (track.radiusZ + wave * 0.7);
-      return new THREE.Vector3(x, 0, z);
+      const a = t * Math.PI * 2;
+      const rWave = Math.sin(a * track.f1) * track.amp1 + Math.cos(a * track.f2) * track.amp2;
+      const x = Math.cos(a) * (track.rx + rWave);
+      const z = Math.sin(a) * (track.rz + rWave * 0.82);
+      const y = Math.sin(a * 3) * track.hills + Math.cos(a * 2) * (track.hills * 0.5);
+      return new THREE.Vector3(x, Math.max(0, y), z);
+    }
+
+    // Baut auf jeder der 10 Strecken einzigartige, krasse 3D-Sehenswürdigkeiten & Animationen!
+    function buildTrackMegaLandmarks(track) {
+      if (track.id === 'woerthersee') {
+        // 1. Türkisblauer Wörthersee
+        const lake = new THREE.Mesh(
+          new THREE.CircleGeometry(165, 64),
+          new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.1, metalness: 0.8 })
+        );
+        lake.rotation.x = -Math.PI / 2;
+        lake.position.set(0, -0.05, 0);
+        worldGroup.add(lake);
+
+        // 2. Gedrehter Pyramidenkogel-Holzturm + rotierender Sky-Laser
+        const towerGroup = new THREE.Group();
+        for (let lvl = 0; lvl < 10; lvl++) {
+          const seg = new THREE.Mesh(
+            new THREE.CylinderGeometry(6 - lvl * 0.35, 6.5 - lvl * 0.35, 6.5, 8),
+            new THREE.MeshStandardMaterial({ color: lvl % 2 === 0 ? 0xd97706 : 0xb45309 })
+          );
+          seg.position.y = lvl * 6.2 + 3;
+          seg.rotation.y = lvl * 0.25;
+          towerGroup.add(seg);
+        }
+        const skyDeck = new THREE.Mesh(new THREE.CylinderGeometry(7, 4, 8, 16), new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.9 }));
+        skyDeck.position.y = 65;
+        const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 1.4, 28, 8), new THREE.MeshBasicMaterial({ color: 0xf8fafc }));
+        spire.position.y = 82;
+        const beacon = new THREE.Mesh(new THREE.BoxGeometry(26, 0.4, 0.4), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+        beacon.position.y = 95;
+        towerGroup.add(skyDeck, spire, beacon);
+        worldGroup.add(towerGroup);
+        animatedProps.push({ mesh: beacon, type: 'spinY', speed: 2.5 });
+
+        // 3. Animierte Speedboote auf dem Wörthersee
+        for (let b = 0; b < 4; b++) {
+          const boat = new THREE.Mesh(new THREE.ConeGeometry(2.2, 8.5, 4).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xf8fafc }));
+          boat.position.set(Math.cos(b * 1.5) * 75, 0.3, Math.sin(b * 1.5) * 75);
+          worldGroup.add(boat);
+          animatedProps.push({ mesh: boat, type: 'orbit', radius: 65 + b * 14, angle: b * 1.5, speed: 0.35 + b * 0.08, y: 0.3 });
+        }
+
+        // 4. Legendäres GTI-Steindenkmal Reifnitz am Start
+        const pedestal = new THREE.Mesh(new THREE.BoxGeometry(5, 2.2, 3), new THREE.MeshStandardMaterial({ color: 0x64748b }));
+        pedestal.position.set(track.rx - 22, 1.1, 15);
+        const stoneGti = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.5, 2.2), new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.4 }));
+        stoneGti.position.set(track.rx - 22, 2.9, 15);
+        worldGroup.add(pedestal, stoneGti);
+      }
+
+      else if (track.id === 'nordschleife') {
+        // 1. Burg Nürburg auf steilem Eifel-Berg im Zentrum
+        const hill = new THREE.Mesh(new THREE.ConeGeometry(95, 55, 16), new THREE.MeshStandardMaterial({ color: 0x14532d }));
+        hill.position.set(0, 27, 0);
+        const castleKeep = new THREE.Mesh(new THREE.CylinderGeometry(8, 10, 32, 12), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
+        castleKeep.position.set(0, 62, 0);
+        const castleRoof = new THREE.Mesh(new THREE.ConeGeometry(10, 14, 12), new THREE.MeshStandardMaterial({ color: 0x7f1d1d }));
+        castleRoof.position.set(0, 85, 0);
+        worldGroup.add(hill, castleKeep, castleRoof);
+
+        // 2. Schwebender 3D-Zeppelin über der Nordschleife!
+        const blimp = new THREE.Group();
+        const hull = new THREE.Mesh(new THREE.SphereGeometry(14, 16, 16), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
+        hull.scale.set(1, 0.9, 2.8);
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(29, 3, 45), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+        blimp.add(hull, stripe);
+        blimp.position.set(0, 95, 0);
+        worldGroup.add(blimp);
+        animatedProps.push({ mesh: blimp, type: 'orbit', radius: 130, angle: 0, speed: 0.18, y: 95 });
+      }
+
+      else if (track.id === 'tokyoc1') {
+        // 1. Leuchtender Tokyo Tower (Rot/Weiß) in der Mitte
+        const tTower = new THREE.Group();
+        const lower = new THREE.Mesh(new THREE.ConeGeometry(28, 70, 4), new THREE.MeshBasicMaterial({ color: 0xef4444, wireframe: true }));
+        lower.position.y = 35;
+        const mid = new THREE.Mesh(new THREE.BoxGeometry(14, 6, 14), new THREE.MeshBasicMaterial({ color: 0xf8fafc }));
+        mid.position.y = 65;
+        const upper = new THREE.Mesh(new THREE.ConeGeometry(10, 65, 4), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        upper.position.y = 98;
+        const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 1.5, 35, 8), new THREE.MeshBasicMaterial({ color: 0xf8fafc }));
+        tip.position.y = 140;
+        tTower.add(lower, mid, upper, tip);
+        worldGroup.add(tTower);
+
+        // 2. Rotierende Cyberpunk-Hologramm-Ringe
+        const holoRing = new THREE.Mesh(new THREE.TorusGeometry(38, 1.2, 12, 48), new THREE.MeshBasicMaterial({ color: 0x00f2fe }));
+        holoRing.position.set(0, 75, 0);
+        worldGroup.add(holoRing);
+        animatedProps.push({ mesh: holoRing, type: 'spinY', speed: 1.2 });
+      }
+
+      else if (track.id === 'akina') {
+        // 1. Riesiger leuchtender Vollmond über dem Mount Akina
+        const moon = new THREE.Mesh(new THREE.SphereGeometry(36, 24, 24), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+        moon.position.set(-220, 190, -240);
+        worldGroup.add(moon);
+
+        // 2. Mount Akina Vulkan-Gipfel im Zentrum
+        const volcano = new THREE.Mesh(new THREE.ConeGeometry(115, 85, 16), new THREE.MeshStandardMaterial({ color: 0x334155 }));
+        volcano.position.set(0, 42, 0);
+        const snowCap = new THREE.Mesh(new THREE.ConeGeometry(42, 32, 16), new THREE.MeshBasicMaterial({ color: 0xf8fafc }));
+        snowCap.position.set(0, 70, 0);
+        worldGroup.add(volcano, snowCap);
+      }
+
+      else if (track.id === 'monaco') {
+        // Mittelmeer-Yachthafen mit Superyachten!
+        const sea = new THREE.Mesh(new THREE.CircleGeometry(155, 48), new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.1, metalness: 0.85 }));
+        sea.rotation.x = -Math.PI / 2;
+        sea.position.y = -0.05;
+        worldGroup.add(sea);
+
+        for (let y = 0; y < 5; y++) {
+          const yacht = new THREE.Group();
+          const hull = new THREE.Mesh(new THREE.BoxGeometry(7, 3.2, 24), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
+          const deck = new THREE.Mesh(new THREE.BoxGeometry(5.5, 2.5, 15), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+          deck.position.y = 2.6;
+          const top = new THREE.Mesh(new THREE.BoxGeometry(4, 1.8, 9), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
+          top.position.y = 4.5;
+          yacht.add(hull, deck, top);
+          yacht.position.set(-55 + y * 28, 1.5, -30 + (y % 2) * 55);
+          yacht.rotation.y = 0.4;
+          worldGroup.add(yacht);
+        }
+      }
+
+      else if (track.id === 'grossglockner') {
+        // Majestätische 3D-Schneegipfel (Großglockner 3798m) + Gletscher
+        for (let m = 0; m < 6; m++) {
+          const ang = (m / 6) * Math.PI * 2;
+          const peak = new THREE.Mesh(new THREE.ConeGeometry(65, 110, 7), new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.5 }));
+          peak.position.set(Math.cos(ang) * 95, 50, Math.sin(ang) * 75);
+          worldGroup.add(peak);
+        }
+      }
+
+      else if (track.id === 'nevada') {
+        // Area-51 Geheimbasis + schwebendes 3D-UFO mit grünem Traktorstrahl!
+        const ufoGroup = new THREE.Group();
+        const saucer = new THREE.Mesh(new THREE.CylinderGeometry(18, 18, 2.5, 24), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9 }));
+        const dome = new THREE.Mesh(new THREE.SphereGeometry(8, 16, 16), new THREE.MeshBasicMaterial({ color: 0x22c55e }));
+        dome.position.y = 2;
+        const beam = new THREE.Mesh(
+          new THREE.ConeGeometry(22, 75, 16, 1, true),
+          new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.25, side: THREE.DoubleSide })
+        );
+        beam.position.y = -38;
+        ufoGroup.add(saucer, dome, beam);
+        ufoGroup.position.set(0, 75, 0);
+        worldGroup.add(ufoGroup);
+        animatedProps.push({ mesh: ufoGroup, type: 'orbit', radius: 95, angle: 0, speed: 0.45, y: 75 });
+      }
+
+      else if (track.id === 'shibuya') {
+        // Riesige rotierende Goldene Drift-Krone in der Arena-Mitte
+        const crown = new THREE.Mesh(new THREE.OctahedronGeometry(22, 0), new THREE.MeshBasicMaterial({ color: 0xfacc15, wireframe: true }));
+        crown.position.set(0, 35, 0);
+        worldGroup.add(crown);
+        animatedProps.push({ mesh: crown, type: 'spinY', speed: 1.5 });
+      }
+
+      else if (track.id === 'autobahn') {
+        // Animierte 3D-Windkraftanlagen (Windräder) entlang der deutschen Autobahn!
+        for (let w = 0; w < 8; w++) {
+          const ang = (w / 8) * Math.PI * 2;
+          const wx = Math.cos(ang) * 210;
+          const wz = Math.sin(ang) * 120;
+          const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.8, 52, 12), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
+          mast.position.set(wx, 26, wz);
+          worldGroup.add(mast);
+
+          const rotor = new THREE.Group();
+          for (let b = 0; b < 3; b++) {
+            const blade = new THREE.Mesh(new THREE.BoxGeometry(1.1, 22, 0.3), new THREE.MeshBasicMaterial({ color: 0xf8fafc }));
+            blade.position.y = 10;
+            const holder = new THREE.Group();
+            holder.rotation.z = (b * Math.PI * 2) / 3;
+            holder.add(blade);
+            rotor.add(holder);
+          }
+          rotor.position.set(wx, 52, wz + 1.2);
+          worldGroup.add(rotor);
+          animatedProps.push({ mesh: rotor, type: 'spinZ', speed: 2.2 + (w % 3) * 0.4 });
+        }
+      }
     }
 
     function buildRaceTrack() {
       while (worldGroup.children.length > 0) worldGroup.remove(worldGroup.children[0]);
       trackPoints = [];
       trackObstacles = [];
+      speedCameras = [];
       sparkParticles = [];
       botCars = [];
+      animatedProps = [];
 
       const track = TRACKS.find(t => t.id === state.selectedTrack) || TRACKS[0];
+      const modeObj = GAME_MODES.find(m => m.id === state.selectedMode) || GAME_MODES[0];
       const isDragMode = state.selectedMode === 'drag' || track.isDrag;
+      const isChaosMode = modeObj.chaos === true;
 
-      scene.background = new THREE.Color(track.sky);
-      scene.fog = new THREE.FogExp2(track.sky, 0.0018);
+      const wp = WEATHER_PRESETS[weatherIdx];
+      scene.background = new THREE.Color(wp.id === 'night' ? 0x03050a : track.sky);
+      scene.fog = new THREE.FogExp2(wp.id === 'night' ? 0x03050a : track.sky, 0.0012 * wp.fogMult);
+      ambientLight.intensity = wp.ambient;
+      dirLight.intensity = wp.dir;
 
-      // Gelände-Boden
       const ground = new THREE.Mesh(
-        new THREE.PlaneGeometry(3000, 3000),
+        new THREE.PlaneGeometry(4000, 4000),
         new THREE.MeshStandardMaterial({ color: track.ground, roughness: 0.9 })
       );
       ground.rotation.x = -Math.PI / 2;
-      ground.position.y = -0.08;
+      ground.position.y = -0.25;
       worldGroup.add(ground);
 
-      // Spezielles Wörthersee-Feature: Türkisblauer See + Pyramidenkogel-Turm!
-      if (track.id === 'woerthersee') {
-        const lake = new THREE.Mesh(
-          new THREE.CircleGeometry(135, 48),
-          new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.15, metalness: 0.7 })
-        );
-        lake.rotation.x = -Math.PI / 2;
-        lake.position.set(0, -0.02, 0);
-        worldGroup.add(lake);
+      // Spezifische 3D-Wahrzeichen der gewählten Strecke aufbauen
+      buildTrackMegaLandmarks(isDragMode ? TRACKS[9] : track);
 
-        // Pyramidenkogel Aussichtsturm in der Mitte
-        const towerBase = new THREE.Mesh(
-          new THREE.CylinderGeometry(3, 8, 55, 12),
-          new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 })
-        );
-        towerBase.position.set(0, 27, 0);
-        const towerTop = new THREE.Mesh(
-          new THREE.CylinderGeometry(6, 3, 10, 16),
-          new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.8 })
-        );
-        towerTop.position.set(0, 56, 0);
-        const spire = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.3, 1.2, 22, 8),
-          new THREE.MeshBasicMaterial({ color: 0xf8fafc })
-        );
-        spire.position.set(0, 70, 0);
-        worldGroup.add(towerBase, towerTop, spire);
-      }
-
-      // Strecken-Segmente & durchgängige 3D-Leitplanken generieren
-      const segments = isDragMode ? 120 : 220;
-      const roadMat = new THREE.MeshStandardMaterial({ color: track.road, roughness: 0.65 });
-      const railMatL = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.6, roughness: 0.3 });
-      const railMatR = new THREE.MeshStandardMaterial({ color: 0xf43f5e, metalness: 0.6, roughness: 0.3 });
+      const segments = isDragMode ? 140 : 280;
+      const roadMat = new THREE.MeshStandardMaterial({
+        color: track.road,
+        roughness: wp.id === 'rain' ? 0.16 : 0.62,
+        metalness: wp.id === 'rain' ? 0.6 : 0.15
+      });
+      const kerbRed = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+      const kerbWhite = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
+      const railMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.7, roughness: 0.3 });
 
       for (let i = 0; i < segments; i++) {
         const t1 = i / segments;
         const t2 = ((i + 1) % segments) / segments;
-        const p1 = getPointOnTrack(t1, isDragMode ? TRACKS[6] : track);
+        const p1 = getComplexTrackPoint(t1, isDragMode ? TRACKS[9] : track);
         const p2 = isDragMode && i === segments - 1
-          ? new THREE.Vector3(0, 0, -960)
-          : getPointOnTrack(t2, isDragMode ? TRACKS[6] : track);
+          ? new THREE.Vector3(0, 0, -1060)
+          : getComplexTrackPoint(t2, isDragMode ? TRACKS[9] : track);
 
         const tangent = new THREE.Vector3().subVectors(p2, p1).normalize();
         const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-        const segLen = p1.distanceTo(p2) + 0.45;
+        const segLen = p1.distanceTo(p2) + 0.55;
 
         trackPoints.push({ pos: p1.clone(), tangent, normal });
 
-        // Asphalt-Segment
-        const segMesh = new THREE.Mesh(new THREE.BoxGeometry(trackWidth * 2, 0.12, segLen), roadMat);
+        // Straße
+        const segMesh = new THREE.Mesh(new THREE.BoxGeometry(trackWidth * 2, 0.25, segLen), roadMat);
         segMesh.position.copy(p1).add(p2).multiplyScalar(0.5);
         segMesh.lookAt(p2);
         worldGroup.add(segMesh);
 
-        // DURCHGÄNGIGE 3D-LEITPLANKEN (Links & Rechts)
-        const leftPos = p1.clone().addScaledVector(normal, trackWidth + 0.45);
-        const rightPos = p1.clone().addScaledVector(normal, -(trackWidth + 0.45));
+        // Kerbs + durchgängige 3D-Leitplanken
+        const leftKerbPos = p1.clone().addScaledVector(normal, trackWidth - 0.4);
+        const rightKerbPos = p1.clone().addScaledVector(normal, -(trackWidth - 0.4));
+        const kMat = i % 2 === 0 ? kerbRed : kerbWhite;
 
-        const railGeo = new THREE.BoxGeometry(0.55, 1.15, segLen + 0.2);
-        const railL = new THREE.Mesh(railGeo, i % 2 === 0 ? railMatL : railMatR);
-        railL.position.copy(leftPos);
-        railL.position.y = 0.6;
-        railL.lookAt(leftPos.clone().add(tangent));
+        const kL = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.3, segLen), kMat);
+        kL.position.copy(leftKerbPos);
+        kL.lookAt(leftKerbPos.clone().add(tangent));
+        const kR = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.3, segLen), kMat);
+        kR.position.copy(rightKerbPos);
+        kR.lookAt(rightKerbPos.clone().add(tangent));
+        worldGroup.add(kL, kR);
 
-        const railR = new THREE.Mesh(railGeo, i % 2 === 0 ? railMatR : railMatL);
-        railR.position.copy(rightPos);
-        railR.position.y = 0.6;
-        railR.lookAt(rightPos.clone().add(tangent));
+        const leftRailPos = p1.clone().addScaledVector(normal, trackWidth + 0.5);
+        const rightRailPos = p1.clone().addScaledVector(normal, -(trackWidth + 0.5));
+        const rGeo = new THREE.BoxGeometry(0.5, 1.15, segLen + 0.2);
 
-        worldGroup.add(railL, railR);
+        const rL = new THREE.Mesh(rGeo, railMat);
+        rL.position.copy(leftRailPos);
+        rL.position.y += 0.6;
+        rL.lookAt(leftRailPos.clone().add(tangent));
+        const rR = new THREE.Mesh(rGeo, railMat);
+        rR.position.copy(rightRailPos);
+        rR.position.y += 0.6;
+        rR.lookAt(rightRailPos.clone().add(tangent));
+        worldGroup.add(rL, rR);
 
-        // Interaktive Pickups, Boost-Pads & Öl-Fallen auf der Strecke
-        if (i > 8 && i % 14 === 0) {
-          const laneOffset = (Math.random() - 0.5) * (trackWidth * 1.2);
+        // Strecken-Spezifische Bögen, Tunnel, Torii-Gates & Autobahn-Schilder!
+        if (i === 0) {
+          const startGate = new THREE.Mesh(new THREE.BoxGeometry(trackWidth * 2.2, 6.8, 2.5), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+          startGate.position.copy(p1);
+          startGate.position.y += 5.5;
+          startGate.lookAt(p2);
+          worldGroup.add(startGate);
+        } else if (track.id === 'monaco' && i > 55 && i < 115 && i % 2 === 0) {
+          // Monaco Fairmont Tunnel mit leuchtenden Deckenstreifen
+          const tunnelArch = new THREE.Mesh(new THREE.BoxGeometry(trackWidth * 2.3, 7.5, segLen * 2.1), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+          tunnelArch.position.copy(p1);
+          tunnelArch.position.y += 6.2;
+          tunnelArch.lookAt(p2);
+          const ceilingLight = new THREE.Mesh(new THREE.BoxGeometry(4, 0.25, segLen * 1.5), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+          ceilingLight.position.copy(p1);
+          ceilingLight.position.y += 5.8;
+          ceilingLight.lookAt(p2);
+          worldGroup.add(tunnelArch, ceilingLight);
+        } else if (track.id === 'akina' && i % 28 === 0) {
+          // Rote japanische Torii-Tore über dem Mount Akina Pass
+          const toriiTop = new THREE.Mesh(new THREE.BoxGeometry(trackWidth * 2.3, 1.4, 1.4), new THREE.MeshBasicMaterial({ color: 0xdc2626 }));
+          toriiTop.position.copy(p1);
+          toriiTop.position.y += 6.8;
+          toriiTop.lookAt(p2);
+          worldGroup.add(toriiTop);
+        } else if (track.id === 'autobahn' && i % 35 === 0) {
+          // Blaue deutsche Autobahn-Schilderbrücken
+          const signBridge = new THREE.Mesh(new THREE.BoxGeometry(trackWidth * 2.1, 3.2, 0.8), new THREE.MeshBasicMaterial({ color: 0x1d4ed8 }));
+          signBridge.position.copy(p1);
+          signBridge.position.y += 6.5;
+          signBridge.lookAt(p2);
+          worldGroup.add(signBridge);
+        } else if (isDragMode && i < 35 && i % 4 === 0) {
+          // Riesige Dragstrip-Zuschauertribünen links und rechts
+          const standL = new THREE.Mesh(new THREE.BoxGeometry(8, 12, 16), new THREE.MeshStandardMaterial({ color: 0x334155 }));
+          standL.position.copy(p1).addScaledVector(normal, trackWidth + 8);
+          standL.position.y += 6;
+          const standR = standL.clone();
+          standR.position.copy(p1).addScaledVector(normal, -(trackWidth + 8));
+          standR.position.y += 6;
+          worldGroup.add(standL, standR);
+        }
+
+        // Rand-Bebauung je nach Biom (Sakura-Bäume, Wolkenkratzer, Kakteen/Felsen, Schneewände)
+        if (i % 6 === 0) {
+          const propPos = p1.clone().addScaledVector(normal, (i % 12 === 0 ? 1 : -1) * (trackWidth + 9 + Math.random() * 14));
+          if (track.id === 'tokyoc1' || track.id === 'shibuya') {
+            const h = 22 + Math.random() * 44;
+            const bldg = new THREE.Mesh(
+              new THREE.BoxGeometry(9.5, h, 9.5),
+              new THREE.MeshStandardMaterial({ color: 0x0f172a, emissive: i % 18 === 0 ? 0xec4899 : 0x0ea5e9, emissiveIntensity: 0.22 })
+            );
+            bldg.position.set(propPos.x, h / 2, propPos.z);
+            worldGroup.add(bldg);
+          } else if (track.id === 'akina') {
+            // Pinke Sakura-Kirschblütenbäume!
+            const sakura = new THREE.Mesh(new THREE.SphereGeometry(3.8, 8, 8), new THREE.MeshStandardMaterial({ color: 0xf472b6 }));
+            sakura.position.set(propPos.x, propPos.y + 4.5, propPos.z);
+            worldGroup.add(sakura);
+          } else if (track.id === 'nevada') {
+            // Rote Canyon-Felsen
+            const mesa = new THREE.Mesh(new THREE.CylinderGeometry(4, 9, 18 + Math.random() * 20, 6), new THREE.MeshStandardMaterial({ color: 0x9a3412 }));
+            mesa.position.set(propPos.x, propPos.y + 9, propPos.z);
+            worldGroup.add(mesa);
+          } else {
+            const treeColor = track.id === 'grossglockner' ? 0xe2e8f0 : 0x15803d;
+            const crown = new THREE.Mesh(new THREE.ConeGeometry(2.8, 8, 7), new THREE.MeshStandardMaterial({ color: treeColor }));
+            crown.position.set(propPos.x, propPos.y + 4, propPos.z);
+            worldGroup.add(crown);
+          }
+        }
+
+        // RADAR-BLITZER ("Starenkasten") am Straßenrand
+        if (i > 20 && i % 55 === 0) {
+          const camPos = p1.clone().addScaledVector(normal, trackWidth - 1.2);
+          const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 3.2), railMat);
+          pole.position.set(camPos.x, camPos.y + 1.6, camPos.z);
+          const box = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.1, 0.9), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+          box.position.set(camPos.x, camPos.y + 3.2, camPos.z);
+          worldGroup.add(pole, box);
+          speedCameras.push({ pos: camPos, cooldown: 0 });
+        }
+
+        // EXKLUSIV IM CHAOS-MAYHEM-MODUS: Öl-Fallen, Boost-Pads & Nitro-Pickups!
+        if (isChaosMode && i > 10 && i % 12 === 0) {
+          const laneOffset = (Math.random() - 0.5) * (trackWidth * 1.3);
           const itemPos = p1.clone().addScaledVector(normal, laneOffset);
-          const typeRoll = i % 42 === 0 ? 'oil' : i % 28 === 0 ? 'nos' : 'boost';
+          const typeRoll = i % 36 === 0 ? 'oil' : i % 24 === 0 ? 'nos' : 'boost';
           spawnTrackObject(typeRoll, itemPos);
         }
       }
 
-      // Spieler-Auto platzieren
+      // Spieler-Auto spawnen
       const stats = getCarStats();
-      const built = createCarMesh(stats.car, stats.cfg, stats, false);
+      const built = createCarMesh(stats.car, stats.cfg, stats, false, false);
       playerMesh = built.group;
       playerWheels = built.wheels;
+      playerFlameCones = built.flames;
       const startNode = trackPoints[0];
       playerMesh.position.copy(startNode.pos);
       const startYaw = Math.atan2(startNode.tangent.x, startNode.tangent.z);
       playerMesh.rotation.y = startYaw;
       worldGroup.add(playerMesh);
 
-      // KI-Bots spawnen (außer in Time Attack)
+      // KI-Gegner / Polizei-Interceptors spawnen
       if (state.selectedMode !== 'timeattack') {
-        const botCount = isDragMode ? 1 : 3;
+        const botCount = isDragMode ? 1 : 5;
+        const isPoliceMode = state.selectedMode === 'police';
         for (let b = 0; b < botCount; b++) {
-          const bCar = CARS[(b + 1) % CARS.length];
-          const bBuilt = createCarMesh(bCar, defaultSave.carConfigs[bCar.id], { bigWing: true, rimColor: 0xfacc15 }, true);
-          const sideOffset = (b % 2 === 0 ? 1 : -1) * (3.8 + b * 1.4);
-          bBuilt.group.position.copy(startNode.pos).addScaledVector(startNode.normal, sideOffset);
-          bBuilt.group.rotation.y = startYaw;
+          const bCar = CARS[(b * 17 + 3) % CARS.length];
+          const bBuilt = createCarMesh(bCar, ensureCarConfig(bCar.id), { bigWing: true, rimColor: 0xfacc15 }, true, isPoliceMode && b < 2);
+          const sideOffset = ((b % 2 === 0 ? 1 : -1) * (3.5 + (b % 3) * 2.2));
+          const startIdx = isDragMode ? 0 : (b * 3) % trackPoints.length;
+          bBuilt.group.position.copy(trackPoints[startIdx].pos).addScaledVector(trackPoints[startIdx].normal, sideOffset);
           worldGroup.add(bBuilt.group);
           botCars.push({
             mesh: bBuilt.group,
-            trackIdx: 0,
-            progress: 0,
-            speed: 0,
-            maxSpeed: (stats.maxSpeedKmh / 3.6) * (0.86 + b * 0.055),
+            progress: startIdx,
+            maxSpeed: (stats.maxSpeedKmh / 3.6) * (0.82 + (b * 0.04)),
             laneOffset: sideOffset,
-            spinTimer: 0
+            targetLane: sideOffset
           });
         }
       }
@@ -961,113 +1733,175 @@
     function spawnTrackObject(type, position) {
       let mesh;
       if (type === 'boost') {
-        mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(3.2, 0.15, 4.5),
-          new THREE.MeshBasicMaterial({ color: 0x00f2fe })
-        );
-        mesh.position.set(position.x, 0.12, position.z);
+        mesh = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.2, 4.8), new THREE.MeshBasicMaterial({ color: 0x00f2fe }));
+        mesh.position.set(position.x, position.y + 0.18, position.z);
       } else if (type === 'nos') {
-        mesh = new THREE.Mesh(
-          new THREE.OctahedronGeometry(0.85, 0),
-          new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
-        );
-        mesh.position.set(position.x, 1.0, position.z);
+        mesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.9, 0), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+        mesh.position.set(position.x, position.y + 1.1, position.z);
       } else if (type === 'oil') {
         mesh = new THREE.Mesh(
-          new THREE.CylinderGeometry(2.1, 2.1, 0.08, 16),
-          new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.05, metalness: 0.9 })
+          new THREE.CylinderGeometry(2.2, 2.2, 0.1, 16),
+          new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.04, metalness: 0.92 })
         );
-        mesh.position.set(position.x, 0.08, position.z);
+        mesh.position.set(position.x, position.y + 0.12, position.z);
       }
       worldGroup.add(mesh);
       trackObstacles.push({ type, mesh, active: true });
     }
 
-    // 3D-Funkenflug bei Leitplanken-Kontakt
     function emitGuardrailSparks(pos) {
       playSparkSound();
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < 7; i++) {
         const spark = new THREE.Mesh(
-          new THREE.BoxGeometry(0.14, 0.14, 0.14),
+          new THREE.BoxGeometry(0.16, 0.16, 0.16),
           new THREE.MeshBasicMaterial({ color: Math.random() > 0.4 ? 0xfacc15 : 0xf97316 })
         );
         spark.position.copy(pos);
-        spark.position.y += 0.55;
+        spark.position.y += 0.6;
         worldGroup.add(spark);
         sparkParticles.push({
           mesh: spark,
-          vel: new THREE.Vector3((Math.random() - 0.5) * 12, 3 + Math.random() * 6, (Math.random() - 0.5) * 12),
+          vel: new THREE.Vector3((Math.random() - 0.5) * 14, 3 + Math.random() * 6, (Math.random() - 0.5) * 14),
           life: 0.35
         });
       }
     }
 
-    // --- 7. FAHRPHYSIK, STEUERUNG & MULTI-TOUCH / GYRO ---
+    function emitTireSmoke(pos) {
+      const smoke = new THREE.Mesh(
+        new THREE.SphereGeometry(0.35, 6, 6),
+        new THREE.MeshBasicMaterial({ color: 0xe2e8f0, transparent: true, opacity: 0.45 })
+      );
+      smoke.position.copy(pos);
+      smoke.position.y += 0.2;
+      worldGroup.add(smoke);
+      sparkParticles.push({
+        mesh: smoke,
+        vel: new THREE.Vector3((Math.random() - 0.5) * 2, 1.5, (Math.random() - 0.5) * 2),
+        life: 0.45
+      });
+    }
+
+    // --- 11. FAHRPHYSIK, BLITZER, BACKFIRE & MINIMAP ---
     const keys = { up: false, down: false, left: false, right: false, nos: false };
     let gyroEnabled = false;
     let gyroSteerVal = 0;
 
     let raceState = {
-      speed: 0,
-      yaw: 0,
-      rpm: 1000,
-      gear: 1,
-      nosAmount: 100,
-      oilAmmo: 3,
-      spinTimer: 0,
-      driftScore: 0,
-      lap: 1,
-      totalLaps: 3,
-      checkpointIdx: 0,
-      startTime: 0,
-      countdown: 3,
-      finished: false
+      speed: 0, yaw: 0, rpm: 1000, gear: 1, prevGear: 1,
+      nosAmount: 100, oilAmmo: 3, spinTimer: 0, driftScore: 0,
+      lap: 1, totalLaps: 3, checkpointIdx: 0, startTime: 0, countdown: 3, finished: false
     };
 
     window.addEventListener('keydown', e => {
       const k = e.key.toLowerCase();
       if (k === 'w' || e.key === 'ArrowUp') keys.up = true;
-      if (k === 's' || e.key === 'ArrowDown' || k === ' ') keys.down = true;
+      if (k === 's' || e.key === 'ArrowDown' || e.key === ' ') keys.down = true;
       if (k === 'a' || e.key === 'ArrowLeft') keys.left = true;
       if (k === 'd' || e.key === 'ArrowRight') keys.right = true;
       if (e.key === 'Shift') keys.nos = true;
-      if (k === 'e' && inRace) dropPlayerOilTrap();
+      if (k === 'e' && inRace) triggerSpecialActionE();
+      if (k === 'b') playHornSound();
+      if (k === 'h') { hopOffsetY = 0.65; playSparkSound(); }
+      if (k === 'c' && inRace) document.getElementById('btn-camera-view').click();
     });
 
     window.addEventListener('keyup', e => {
       const k = e.key.toLowerCase();
-      if (k === 'w' || e.key === 'ArrowUp') keys.up = false;
-      if (k === 's' || e.key === 'ArrowDown' || k === ' ') keys.down = false;
+      if (k === 'w' || e.key === 'ArrowUp') {
+        keys.up = false;
+        if (inRace && raceState.rpm > 4500) {
+          flameTimer = 0.28;
+          playBackfirePop();
+        }
+      }
+      if (k === 's' || e.key === 'ArrowDown' || e.key === ' ') keys.down = false;
       if (k === 'a' || e.key === 'ArrowLeft') keys.left = false;
       if (k === 'd' || e.key === 'ArrowRight') keys.right = false;
       if (e.key === 'Shift') keys.nos = false;
     });
 
-    function dropPlayerOilTrap() {
-      if (!inRace || raceState.oilAmmo <= 0 || !playerMesh) return;
-      raceState.oilAmmo--;
-      document.getElementById('hud-oil-count').textContent = `🛢️ x${raceState.oilAmmo} bereit`;
-      const backPos = playerMesh.position.clone().sub(
-        new THREE.Vector3(Math.sin(raceState.yaw) * 4.2, 0, Math.cos(raceState.yaw) * 4.2)
-      );
-      spawnTrackObject('oil', backPos);
-      playBoostTone(240);
+    function triggerSpecialActionE() {
+      const modeObj = GAME_MODES.find(m => m.id === state.selectedMode) || GAME_MODES[0];
+      if (modeObj.chaos) {
+        if (raceState.oilAmmo <= 0 || !playerMesh) return;
+        raceState.oilAmmo--;
+        document.getElementById('hud-oil-count').textContent = `🛢️ x${raceState.oilAmmo} Öl-Fallen`;
+        const backPos = playerMesh.position.clone().sub(
+          new THREE.Vector3(Math.sin(raceState.yaw) * 4.5, 0, Math.cos(raceState.yaw) * 4.5)
+        );
+        spawnTrackObject('oil', backPos);
+      } else {
+        playHornSound();
+        document.getElementById('hud-oil-count').textContent = '💡 LICHTHUPE AKTIV!';
+        botCars.forEach(b => { b.targetLane = (b.laneOffset > 0 ? 1 : -1) * (trackWidth - 3.2); });
+        setTimeout(() => {
+          if (inRace) document.getElementById('hud-oil-count').textContent = '💡 Lichthupe bereit (E)';
+        }, 1200);
+      }
     }
 
-    // Mobile Touch & Gyroskop Setup
-    let isMobileForced = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || window.innerWidth < 900;
+    function triggerBlitzerFlash(kmh) {
+      const overlay = document.getElementById('blitzer-overlay');
+      const toast = document.getElementById('blitzer-toast');
+      overlay.classList.remove('hidden', 'blitzer-flash');
+      void overlay.offsetWidth;
+      overlay.classList.add('blitzer-flash');
+      setTimeout(() => overlay.classList.add('hidden'), 450);
 
+      const bonus = Math.round(kmh * 15);
+      state.cash += bonus;
+      saveGame();
+      document.getElementById('blitzer-text').textContent = `📸 ${kmh} KM/H GEBLITZT!`;
+      document.getElementById('blitzer-sub').textContent = `Highspeed-Bonus: +$${bonus.toLocaleString()}`;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 2600);
+    }
+
+    function drawMinimap() {
+      const canvas = document.getElementById('minimap-canvas');
+      if (!canvas || !trackPoints.length || !playerMesh) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const scale = 0.13;
+
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      trackPoints.forEach((pt, i) => {
+        const x = cx + pt.pos.x * scale;
+        const y = cy + pt.pos.z * scale;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.fillStyle = '#f43f5e';
+      botCars.forEach(b => {
+        ctx.beginPath();
+        ctx.arc(cx + b.mesh.position.x * scale, cy + b.mesh.position.z * scale, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(cx + playerMesh.position.x * scale, cy + playerMesh.position.z * scale, 3.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    let isMobileForced = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || window.innerWidth < 900;
     function updateMobileHudVisibility() {
       const cockpit = document.getElementById('mobile-cockpit');
       const gyroBtn = document.getElementById('btn-gyro-toggle');
       document.getElementById('lbl-mobile-mode').textContent = isMobileForced ? 'Touch: AN' : 'Touch: AUS';
       if (inRace && isMobileForced) {
-        cockpit.classList.remove('hidden');
-        cockpit.classList.add('flex');
+        cockpit.classList.remove('hidden'); cockpit.classList.add('flex');
         gyroBtn.classList.remove('hidden');
       } else {
-        cockpit.classList.add('hidden');
-        cockpit.classList.remove('flex');
+        cockpit.classList.add('hidden'); cockpit.classList.remove('flex');
       }
     }
 
@@ -1080,20 +1914,19 @@
       btn.addEventListener('touchend', end, { passive: false });
       btn.addEventListener('mousedown', start);
       btn.addEventListener('mouseup', end);
-      btn.addEventListener('mouseleave', end);
     }
     bindTouchButton('touch-left', 'left');
     bindTouchButton('touch-right', 'right');
     bindTouchButton('touch-gas', 'up');
     bindTouchButton('touch-brake', 'down');
     bindTouchButton('touch-nos', 'nos');
-    document.getElementById('touch-oil').addEventListener('click', dropPlayerOilTrap);
+    document.getElementById('touch-oil').addEventListener('click', triggerSpecialActionE);
+    document.getElementById('btn-hud-horn').addEventListener('click', playHornSound);
 
     window.addEventListener('deviceorientation', e => {
       if (!gyroEnabled || e.gamma === null) return;
-      gyroSteerVal = THREE.MathUtils.clamp(e.gamma / 30, -1, 1);
+      gyroSteerVal = THREE.MathUtils.clamp(e.gamma / 28, -1, 1);
     });
-
     document.getElementById('btn-gyro-toggle').addEventListener('click', async () => {
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try { await DeviceOrientationEvent.requestPermission(); } catch (_) {}
@@ -1102,91 +1935,89 @@
       document.getElementById('btn-gyro-toggle').textContent = gyroEnabled ? '🧭 Gyro: AN' : '🧭 Gyro: AUS';
     });
 
-    // --- 8. RENN-START & HAUPTSCHLEIFE ---
+    // --- 12. RENNEN STARTEN & VOLLSTÄNDIGE FAHRPHYSIK ---
     function startRace() {
       initAudio();
       document.getElementById('garage-ui').classList.add('hidden');
       document.getElementById('finish-modal').classList.add('hidden');
       const hud = document.getElementById('race-hud');
-      hud.classList.remove('hidden');
-      hud.classList.add('flex');
+      hud.classList.remove('hidden'); hud.classList.add('flex');
 
-      const driftBox = document.getElementById('hud-drift-box');
-      if (state.selectedMode === 'drift') driftBox.classList.remove('hidden');
-      else driftBox.classList.add('hidden');
+      const modeObj = GAME_MODES.find(m => m.id === state.selectedMode) || GAME_MODES[0];
+      document.getElementById('hud-drift-box').classList.toggle('hidden', state.selectedMode !== 'drift');
+
+      if (modeObj.chaos) {
+        document.getElementById('hud-special-label').textContent = 'Chaos-Waffe (Taste E)';
+        document.getElementById('hud-oil-count').textContent = '🛢️ x3 Öl-Fallen';
+      } else {
+        document.getElementById('hud-special-label').textContent = 'Autobahn-Feature (Taste E)';
+        document.getElementById('hud-oil-count').textContent = '💡 Lichthupe bereit (E)';
+      }
 
       buildRaceTrack();
       inRace = true;
       updateMobileHudVisibility();
 
       const startNode = trackPoints[0];
+      const isDrag = state.selectedMode === 'drag' || TRACKS.find(t => t.id === state.selectedTrack).isDrag;
       raceState = {
         speed: 0,
         yaw: Math.atan2(startNode.tangent.x, startNode.tangent.z),
-        rpm: 1200,
-        gear: 1,
-        nosAmount: 100,
-        oilAmmo: 3,
-        spinTimer: 0,
-        driftScore: 0,
-        lap: 1,
-        totalLaps: state.selectedMode === 'drag' || TRACKS.find(t => t.id === state.selectedTrack).isDrag ? 1 : 3,
-        checkpointIdx: 0,
-        startTime: performance.now() + 3000,
-        countdown: 3,
-        finished: false
+        rpm: 1200, gear: 1, prevGear: 1,
+        nosAmount: 100, oilAmmo: 3, spinTimer: 0, driftScore: 0,
+        lap: 1, totalLaps: isDrag ? 1 : 3,
+        checkpointIdx: 0, startTime: performance.now() + 2400, countdown: 3, finished: false
       };
 
-      document.getElementById('hud-oil-count').textContent = '🛢️ x3 bereit';
       const banner = document.getElementById('hud-center-banner');
       banner.classList.remove('hidden');
-      banner.textContent = state.selectedMode === 'drag' ? '🚦 STAGE... 3' : '3...';
+      banner.textContent = '🚦 READY... 3';
 
-      const cdInterval = setInterval(() => {
-        if (!inRace) { clearInterval(cdInterval); return; }
+      const cdTimer = setInterval(() => {
+        if (!inRace) { clearInterval(cdTimer); return; }
         raceState.countdown--;
         if (raceState.countdown > 0) {
-          banner.textContent = state.selectedMode === 'drag' ? `🚦 AMBER... ${raceState.countdown}` : `${raceState.countdown}...`;
-          playBoostTone(360);
+          banner.textContent = `🚦 SET... ${raceState.countdown}`;
         } else if (raceState.countdown === 0) {
-          banner.textContent = '🟢 GO! GO! GO!';
-          playBoostTone(680);
+          banner.textContent = '🟢 GO! VOLLGAS!';
         } else {
           banner.classList.add('hidden');
-          clearInterval(cdInterval);
+          clearInterval(cdTimer);
         }
-      }, 1000);
+      }, 800);
     }
 
     function updateRacePhysics(dt) {
       if (!playerMesh || raceState.finished) return;
       const stats = getCarStats();
       const maxSpeedMs = stats.maxSpeedKmh / 3.6;
-      const accel = 18 + (stats.hp / stats.weight) * 28;
+      const accel = 22 + (stats.hp / stats.weight) * 32;
 
-      // Countdown Launch Control (2-Step Drehzahl im Stand)
       if (raceState.countdown > 0) {
-        if (keys.up) raceState.rpm = 5500 + Math.sin(performance.now() * 0.04) * 600;
-        else raceState.rpm = 1200;
+        if (keys.up) {
+          raceState.rpm = 6200 + Math.sin(performance.now() * 0.05) * 700;
+          flameTimer = 0.1;
+        } else {
+          raceState.rpm = 1200;
+        }
         updateHudUI(0);
         return;
       }
 
-      // Beschleunigung & Bremse
       if (keys.up) {
         let boostMult = 1.0;
         if (keys.nos && raceState.nosAmount > 0) {
           boostMult = 1.42;
-          raceState.nosAmount = Math.max(0, raceState.nosAmount - dt * 26);
+          raceState.nosAmount = Math.max(0, raceState.nosAmount - dt * 24);
+          flameTimer = 0.12;
         }
         raceState.speed = Math.min(maxSpeedMs * boostMult, raceState.speed + accel * boostMult * dt);
       } else if (keys.down) {
-        raceState.speed = Math.max(-15, raceState.speed - 38 * dt);
+        raceState.speed = Math.max(-18, raceState.speed - 45 * dt);
       } else {
-        raceState.speed *= (1 - 0.85 * dt);
+        raceState.speed *= (1 - 0.72 * dt);
       }
 
-      // Lenkung (Tastatur/Touch + Gyroskop)
       let steerInput = 0;
       if (keys.left) steerInput += 1;
       if (keys.right) steerInput -= 1;
@@ -1194,27 +2025,25 @@
 
       if (raceState.spinTimer > 0) {
         raceState.spinTimer -= dt;
-        raceState.yaw += 6.5 * dt;
-      } else if (Math.abs(raceState.speed) > 0.5) {
-        const steerFactor = keys.down ? 2.45 : 1.75;
-        raceState.yaw += steerInput * steerFactor * dt * Math.sign(raceState.speed);
+        raceState.yaw += 6.2 * dt;
+      } else if (Math.abs(raceState.speed) > 0.4) {
+        const speedDamp = Math.max(0.55, 1.15 - (Math.abs(raceState.speed) / maxSpeedMs) * 0.45);
+        const driftMult = keys.down ? 2.2 : 1.65;
+        raceState.yaw += steerInput * driftMult * speedDamp * dt * Math.sign(raceState.speed);
       }
 
-      // Drift-Punkte im Drift-Modus oder bei Handbremse
+      // Drift-Score & Reifenqualm
       if (Math.abs(steerInput) > 0.2 && raceState.speed > 16) {
-        raceState.driftScore += Math.round(raceState.speed * (keys.down ? 3.5 : 1.2));
+        raceState.driftScore += Math.round(raceState.speed * (keys.down ? 4.2 : 1.4));
         document.getElementById('hud-drift-score').textContent = `${raceState.driftScore.toLocaleString()} PTS`;
+        if (keys.down && Math.random() > 0.4) emitTireSmoke(playerMesh.position);
       }
 
       // Position aktualisieren
       playerMesh.position.x += Math.sin(raceState.yaw) * raceState.speed * dt;
       playerMesh.position.z += Math.cos(raceState.yaw) * raceState.speed * dt;
-      playerMesh.rotation.y = raceState.yaw + (keys.down ? steerInput * 0.22 : 0);
 
-      // Räder drehen
-      playerWheels.forEach(w => { w.rotation.x += raceState.speed * dt * 1.4; });
-
-      // Nächsten Streckenpunkt suchen & 3D-Leitplanken-Kollision prüfen!
+      // Nächsten Streckenpunkt für Höhenprofil & 3D-Leitplanken-Kollision bestimmen
       let bestDist = Infinity;
       let bestIdx = raceState.checkpointIdx;
       for (let i = 0; i < trackPoints.length; i++) {
@@ -1223,56 +2052,73 @@
       }
 
       const currentPt = trackPoints[bestIdx];
-      const offsetVec = new THREE.Vector3().subVectors(playerMesh.position, currentPt.pos);
-      const lateralOffset = offsetVec.dot(currentPt.normal);
+      playerMesh.position.y = THREE.MathUtils.lerp(playerMesh.position.y, currentPt.pos.y + hopOffsetY, 0.25);
+      playerMesh.rotation.y = raceState.yaw + (keys.down ? steerInput * 0.24 : 0);
 
-      // Kollision mit 3D-Leitplanken!
+      // Räder drehen
+      playerWheels.forEach(w => { w.rotation.x += raceState.speed * dt * 1.45; });
+
+      // 3D-Leitplanken-Kollision
+      const offsetVec = new THREE.Vector3().subVectors(playerMesh.position, currentPt.pos);
+      offsetVec.y = 0;
+      const lateralOffset = offsetVec.dot(currentPt.normal);
       if (Math.abs(lateralOffset) > trackWidth - 1.15) {
         const clamped = Math.sign(lateralOffset) * (trackWidth - 1.25);
-        playerMesh.position.copy(currentPt.pos).addScaledVector(currentPt.normal, clamped);
-        raceState.speed *= 0.84;
+        playerMesh.position.x = currentPt.pos.x + currentPt.normal.x * clamped;
+        playerMesh.position.z = currentPt.pos.z + currentPt.normal.z * clamped;
+        raceState.speed *= 0.85;
         emitGuardrailSparks(playerMesh.position);
       }
 
-      // Strecken-Pickups & Öl-Fallen prüfen
+      // Radar-Blitzer prüfen
+      const kmh = Math.round(Math.abs(raceState.speed) * 3.6);
+      speedCameras.forEach(cam => {
+        if (cam.cooldown > 0) cam.cooldown -= dt;
+        else if (kmh > 160 && playerMesh.position.distanceTo(cam.pos) < 16) {
+          cam.cooldown = 8.0;
+          triggerBlitzerFlash(kmh);
+        }
+      });
+
+      // Chaos-Mayhem-Objekte prüfen
       trackObstacles.forEach(obj => {
         if (!obj.active) return;
-        if (playerMesh.position.distanceTo(obj.mesh.position) < 2.8) {
+        if (playerMesh.position.distanceTo(obj.mesh.position) < 2.9) {
           if (obj.type === 'boost') {
-            raceState.speed = Math.min(maxSpeedMs * 1.35, raceState.speed + 16);
-            playBoostTone(620);
+            raceState.speed = Math.min(maxSpeedMs * 1.38, raceState.speed + 18);
+            flameTimer = 0.25;
           } else if (obj.type === 'nos') {
-            raceState.nosAmount = Math.min(100, raceState.nosAmount + 45);
-            obj.active = false;
-            obj.mesh.visible = false;
-            playBoostTone(740);
+            raceState.nosAmount = Math.min(100, raceState.nosAmount + 50);
+            obj.active = false; obj.mesh.visible = false;
           } else if (obj.type === 'oil') {
             raceState.spinTimer = 0.65;
             raceState.speed *= 0.65;
-            obj.active = false;
-            obj.mesh.visible = false;
+            obj.active = false; obj.mesh.visible = false;
             playSparkSound();
           }
         }
       });
 
-      // Runden- / Zielfortschritt prüfen
+      // Runden- & Ziellogik
       const isDrag = state.selectedMode === 'drag' || TRACKS.find(t => t.id === state.selectedTrack).isDrag;
       if (isDrag) {
         if (bestIdx >= trackPoints.length - 4) finishRace();
       } else {
-        if (bestIdx > raceState.checkpointIdx && bestIdx - raceState.checkpointIdx < 35) {
+        if (bestIdx > raceState.checkpointIdx && bestIdx - raceState.checkpointIdx < 45) {
           raceState.checkpointIdx = bestIdx;
-        } else if (raceState.checkpointIdx > trackPoints.length * 0.8 && bestIdx < 12) {
+        } else if (raceState.checkpointIdx > trackPoints.length * 0.78 && bestIdx < 15) {
           raceState.checkpointIdx = 0;
           raceState.lap++;
           if (raceState.lap > raceState.totalLaps) finishRace();
         }
       }
 
-      // KI-Bots aktualisieren
+      // KI-Bots bewegen + Platzierung berechnen
+      let playerRank = 1;
+      const playerTotalProg = (raceState.lap - 1) * trackPoints.length + raceState.checkpointIdx;
       botCars.forEach(bot => {
-        bot.progress += (bot.maxSpeed * dt) / 4.2;
+        bot.progress += (bot.maxSpeed * dt) / 3.9;
+        bot.laneOffset = THREE.MathUtils.lerp(bot.laneOffset, bot.targetLane, dt * 3);
         const idx = Math.floor(bot.progress) % trackPoints.length;
         const nextIdx = (idx + 1) % trackPoints.length;
         const frac = bot.progress - Math.floor(bot.progress);
@@ -1280,9 +2126,12 @@
         p.addScaledVector(trackPoints[idx].normal, bot.laneOffset);
         bot.mesh.position.copy(p);
         bot.mesh.lookAt(trackPoints[nextIdx].pos.clone().addScaledVector(trackPoints[nextIdx].normal, bot.laneOffset));
+        if (bot.progress > playerTotalProg) playerRank++;
       });
 
-      // Funken-Partikel animieren
+      document.getElementById('hud-pos').textContent = `${playerRank} / ${botCars.length + 1}`;
+
+      // Partikel animieren
       for (let i = sparkParticles.length - 1; i >= 0; i--) {
         const sp = sparkParticles[i];
         sp.life -= dt;
@@ -1293,23 +2142,24 @@
         }
       }
 
-      // Multiplayer Position senden
       broadcastMultiplayerState();
-
-      // HUD aktualisieren
-      const kmh = Math.round(Math.abs(raceState.speed) * 3.6);
       updateHudUI(kmh);
+      drawMinimap();
     }
 
     function updateHudUI(kmh) {
-      const stats = getCarStats();
-      const gearRatios = [0, 62, 115, 175, 240, 310, 440];
+      const gearRatios = [0, 65, 120, 180, 245, 320, 485];
       let g = 1;
       while (g < 6 && kmh > gearRatios[g]) g++;
+      if (g !== raceState.prevGear) {
+        flameTimer = 0.22;
+        playBackfirePop();
+        raceState.prevGear = g;
+      }
       raceState.gear = g;
       const minSpd = gearRatios[g - 1] || 0;
       const maxSpd = gearRatios[g];
-      const gearFrac = THREE.MathUtils.clamp((kmh - minSpd) / (maxSpd - minSpd), 0.12, 0.98);
+      const gearFrac = THREE.MathUtils.clamp((kmh - minSpd) / (maxSpd - minSpd), 0.14, 0.98);
       if (raceState.countdown <= 0) raceState.rpm = Math.round(1200 + gearFrac * 7800);
 
       document.getElementById('hud-speed').textContent = kmh;
@@ -1318,11 +2168,9 @@
       document.getElementById('hud-rpm-bar').style.width = `${Math.min(100, (raceState.rpm / 9000) * 100)}%`;
       document.getElementById('hud-nos-bar').style.width = `${raceState.nosAmount}%`;
 
-      const shiftLight = document.getElementById('hud-shift-light');
-      if (raceState.rpm > 8100) shiftLight.classList.remove('hidden');
-      else shiftLight.classList.add('hidden');
-
+      document.getElementById('hud-shift-light').classList.toggle('hidden', flameTimer <= 0 && raceState.rpm < 8200);
       document.getElementById('hud-lap').textContent = `${Math.min(raceState.lap, raceState.totalLaps)} / ${raceState.totalLaps}`;
+
       const elapsed = Math.max(0, (performance.now() - raceState.startTime) / 1000);
       const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
       const secs = (elapsed % 60).toFixed(2).padStart(5, '0');
@@ -1332,17 +2180,17 @@
     function finishRace() {
       raceState.finished = true;
       const elapsed = Math.max(0, (performance.now() - raceState.startTime) / 1000).toFixed(2);
-      const reward = state.selectedMode === 'drift' ? 18000 + Math.round(raceState.driftScore * 0.5) : 25000;
+      const reward = state.selectedMode === 'drift' ? 35000 + Math.round(raceState.driftScore * 0.6) : 45000;
       state.cash += reward;
       saveGame();
-      renderTopStats();
+      renderAllUI();
 
       document.getElementById('finish-title').textContent = 'ZIEL ERREICHT! 🏆';
       document.getElementById('finish-details').textContent = `Zeit: ${elapsed}s • Preisgeld: +$${reward.toLocaleString()}`;
       document.getElementById('finish-modal').classList.remove('hidden');
     }
 
-    // --- 9. LIVE-DYNO LEISTUNGSPRÜFSTAND (CANVAS ANIMATION) ---
+    // --- 13. LIVE-DYNO LEISTUNGSPRÜFSTAND ---
     let dynoAnimId = null;
     function runDynoTest() {
       initAudio();
@@ -1356,10 +2204,9 @@
       const peakTorque = Math.round(peakHp * 1.18);
 
       function drawFrame() {
-        progress += 0.015;
+        progress += 0.016;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Raster
         ctx.strokeStyle = 'rgba(148, 163, 184, 0.15)';
         ctx.lineWidth = 1;
         for (let x = 40; x < canvas.width; x += 50) {
@@ -1369,29 +2216,26 @@
           ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(canvas.width - 15, y); ctx.stroke();
         }
 
-        // PS-Kurve (Cyan) & Drehmoment-Kurve (Amber)
         const maxDrawX = 40 + (canvas.width - 60) * Math.min(1, progress);
 
-        // PS-Linie
         ctx.strokeStyle = '#38bdf8';
         ctx.lineWidth = 3;
         ctx.beginPath();
         for (let x = 40; x <= maxDrawX; x += 4) {
           const t = (x - 40) / (canvas.width - 60);
-          const hpCurve = Math.pow(t, 1.35) * (1 - Math.max(0, (t - 0.88) * 1.8));
-          const y = (canvas.height - 28) - hpCurve * (canvas.height - 55);
+          const hpCurve = Math.pow(t, 1.32) * (1 - Math.max(0, (t - 0.88) * 1.7));
+          const y = (canvas.height - 28) - hpCurve * (canvas.height - 52);
           if (x === 40) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         }
         ctx.stroke();
 
-        // Nm-Linie
         ctx.strokeStyle = '#f59e0b';
         ctx.lineWidth = 2.5;
         ctx.beginPath();
         for (let x = 40; x <= maxDrawX; x += 4) {
           const t = (x - 40) / (canvas.width - 60);
-          const tqCurve = Math.sin(t * Math.PI * 0.85) * 0.85;
-          const y = (canvas.height - 28) - tqCurve * (canvas.height - 55);
+          const tqCurve = Math.sin(t * Math.PI * 0.86) * 0.85;
+          const y = (canvas.height - 28) - tqCurve * (canvas.height - 52);
           if (x === 40) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         }
         ctx.stroke();
@@ -1399,60 +2243,56 @@
         const currentRpm = Math.round(1500 + Math.min(1, progress) * 7500);
         const currentHp = Math.round(peakHp * Math.min(1, progress));
         document.getElementById('dyno-result-text').textContent =
-          `Messung @ ${currentRpm} RPM: ${currentHp} PS / ${peakTorque} Nm (${stats.piClass} ${stats.pi})`;
+          `Messung @ ${currentRpm} RPM: ${currentHp} PS / ${peakTorque} Nm • Vmax: ${stats.maxSpeedKmh} km/h`;
 
         if (progress < 1) {
           dynoAnimId = requestAnimationFrame(drawFrame);
         } else {
-          playBoostTone(640);
+          flameTimer = 0.35;
+          playBackfirePop();
         }
       }
       drawFrame();
     }
 
-    // --- 10. ECHTZEIT-MULTIPLAYER (EINLADUNGS-LINK + PEERJS P2P + BROADCASTCHANNEL) ---
+    // --- 14. ECHTZEIT-MULTIPLAYER (PEERJS + BROADCASTCHANNEL) ---
     let roomCode = '';
     let bcChannel = null;
     let peerInstance = null;
     let peerConn = null;
     const remotePlayers = {};
+    const myPlayerId = 'p_' + Math.random().toString(36).substring(2, 8);
 
     function connectMultiplayerRoom(code) {
       roomCode = code.trim().toUpperCase() || 'NOVA-1';
       document.getElementById('mp-room-input').value = roomCode;
 
-      // 1. Lokaler BroadcastChannel für direktes Multi-Tab-Testing
       if (bcChannel) bcChannel.close();
       if ('BroadcastChannel' in window) {
-        bcChannel = new BroadcastChannel('nova_mp_' + roomCode);
+        bcChannel = new BroadcastChannel('nova_v5_mp_' + roomCode);
         bcChannel.onmessage = ev => handleMultiplayerPacket(ev.data);
       }
 
-      // 2. PeerJS WebRTC P2P für echtes Online-Spielen über Einladungs-Link
       if (window.Peer) {
         try {
           if (peerInstance) peerInstance.destroy();
-          const hostId = 'novaracer-v4-' + roomCode.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const hostId = 'novaracer-v5-' + roomCode.toLowerCase().replace(/[^a-z0-9]/g, '');
           peerInstance = new Peer(hostId);
-
           peerInstance.on('open', () => {
             document.getElementById('mp-status-dot').textContent = `● Host (${roomCode})`;
           });
-
           peerInstance.on('connection', conn => {
             peerConn = conn;
             conn.on('data', data => handleMultiplayerPacket(data));
-            document.getElementById('mp-status-dot').textContent = `● 2P Verbunden (${roomCode})`;
+            document.getElementById('mp-status-dot').textContent = `● 2P Live (${roomCode})`;
           });
-
           peerInstance.on('error', err => {
             if (err.type === 'unavailable-id') {
-              // Host existiert bereits -> als Gast verbinden!
               peerInstance = new Peer();
               peerInstance.on('open', () => {
                 peerConn = peerInstance.connect(hostId);
                 peerConn.on('open', () => {
-                  document.getElementById('mp-status-dot').textContent = `● Gast Verbunden (${roomCode})`;
+                  document.getElementById('mp-status-dot').textContent = `● Gast Live (${roomCode})`;
                 });
                 peerConn.on('data', data => handleMultiplayerPacket(data));
               });
@@ -1460,19 +2300,16 @@
           });
         } catch (_) {}
       }
-
-      document.getElementById('mp-info-text').textContent =
-        `Aktiv in Raum "${roomCode}". Klicke auf 🔗 Link, um Freunde direkt einzuladen!`;
     }
 
-    const myPlayerId = 'p_' + Math.random().toString(36).substring(2, 8);
     function broadcastMultiplayerState() {
       if (!inRace || !playerMesh || !roomCode) return;
       const packet = {
         id: myPlayerId,
         carId: state.selectedCar,
-        paint: state.carConfigs[state.selectedCar].paint,
+        paint: ensureCarConfig(state.selectedCar).paint,
         x: playerMesh.position.x,
+        y: playerMesh.position.y,
         z: playerMesh.position.z,
         yaw: playerMesh.rotation.y
       };
@@ -1484,67 +2321,145 @@
       if (!data || data.id === myPlayerId || !inRace) return;
       if (!remotePlayers[data.id]) {
         const cData = CARS.find(c => c.id === data.carId) || CARS[0];
-        const built = createCarMesh(cData, { paint: data.paint }, { bigWing: true, rimColor: 0x38bdf8 }, true);
+        const built = createCarMesh(cData, { paint: data.paint }, { bigWing: true, rimColor: 0x38bdf8 }, true, false);
         worldGroup.add(built.group);
         remotePlayers[data.id] = built.group;
       }
       const mesh = remotePlayers[data.id];
-      mesh.position.set(data.x, 0, data.z);
+      mesh.position.set(data.x, data.y || 0, data.z);
       mesh.rotation.y = data.yaw;
     }
 
-    // --- 11. UI-RENDERING & EVENT-LISTENER ---
+    // --- 15. UI, 216-AUTOHAUS & GLÜCKS-KISTE ---
     function renderTopStats() {
       const stats = getCarStats();
       document.getElementById('ui-cash').textContent = `$${state.cash.toLocaleString()}`;
-      document.getElementById('ui-power-badge').textContent = `${stats.hp} PS • ${stats.weight} kg`;
+      document.getElementById('dealer-cash').textContent = `$${state.cash.toLocaleString()}`;
+      document.getElementById('dealer-owned-count').textContent = `${state.ownedCars.length} / ${CARS.length}`;
+      document.getElementById('ui-power-badge').textContent = `${stats.hp} PS • ${stats.weight} kg • ${stats.car.drivetrain}`;
       document.getElementById('ui-pi-badge').textContent = `${stats.piClass} ${stats.pi}`;
+      document.getElementById('ui-active-car-sub').textContent = `Aktuell: ${stats.car.name}`;
+      document.getElementById('ui-selected-car-title').textContent = stats.car.name;
 
       const trackObj = TRACKS.find(t => t.id === state.selectedTrack) || TRACKS[0];
       const modeObj = GAME_MODES.find(m => m.id === state.selectedMode) || GAME_MODES[0];
       document.getElementById('summary-selection').textContent = `${trackObj.name} • ${modeObj.name}`;
+      document.getElementById('mode-badge-info').textContent = modeObj.chaos ? '🛢️ Öl & Pickups AKTIV!' : '✨ Saubere Ideallinie';
     }
 
-    function renderCarList() {
-      const list = document.getElementById('car-list');
-      list.innerHTML = '';
-      CARS.forEach(c => {
+    function renderQuickCars() {
+      const box = document.getElementById('quick-car-list');
+      box.innerHTML = '';
+      // Zeige das aktuell gewählte Auto + Highlights (RS6, GT3 RS, M3 Touring, Jesko, Supra, Multipla)
+      const favIds = ['car_0', 'car_24', 'car_48', 'car_71', 'car_100', 'car_203'];
+      if (!favIds.includes(state.selectedCar)) favIds[0] = state.selectedCar;
+
+      favIds.slice(0, 6).forEach(cid => {
+        const c = CARS.find(x => x.id === cid) || CARS[0];
         const owned = state.ownedCars.includes(c.id);
         const active = state.selectedCar === c.id;
         const btn = document.createElement('button');
         btn.className = `p-2 rounded-lg text-left border transition ${
-          active ? 'bg-cyan-500/20 border-cyan-400 text-white' : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:border-slate-600'
+          active ? 'bg-cyan-500/20 border-cyan-400 text-white' : 'bg-slate-900/75 border-slate-800 text-slate-300 hover:border-slate-600'
         }`;
         btn.innerHTML = `
-          <div class="font-cyber font-bold text-xs truncate">${c.name}</div>
-          <div class="text-[11px] ${owned ? 'text-emerald-400' : 'text-amber-400'}">
-            ${owned ? `${c.baseHp} PS Basis` : `$${c.price.toLocaleString()}`}
+          <div class="font-cyber font-bold text-[11px] truncate">${c.name}</div>
+          <div class="text-[10px] ${owned ? 'text-emerald-400' : 'text-amber-400'}">
+            ${owned ? `✓ ${c.baseHp} PS (${c.drivetrain})` : `$${c.price.toLocaleString()}`}
           </div>
         `;
         btn.onclick = () => {
           state.selectedCar = c.id;
+          ensureCarConfig(c.id);
           saveGame();
           renderAllUI();
           buildGarageScene();
         };
-        list.appendChild(btn);
+        box.appendChild(btn);
       });
 
-      const currentCar = CARS.find(c => c.id === state.selectedCar);
-      const isOwned = state.ownedCars.includes(currentCar.id);
-      const buyBtn = document.getElementById('btn-buy-car');
-      const lockBadge = document.getElementById('car-lock-status');
-
-      if (isOwned) {
+      const curr = CARS.find(c => c.id === state.selectedCar) || CARS[0];
+      const buyBtn = document.getElementById('btn-buy-current-car');
+      if (state.ownedCars.includes(curr.id)) {
         buyBtn.classList.add('hidden');
-        lockBadge.textContent = 'IN DEINER GARAGE';
-        lockBadge.className = 'text-xs font-bold text-emerald-400';
       } else {
         buyBtn.classList.remove('hidden');
-        buyBtn.textContent = `KAUFEN FÜR $${currentCar.price.toLocaleString()}`;
-        lockBadge.textContent = 'GESPERRT (VORSCHAU)';
-        lockBadge.className = 'text-xs font-bold text-amber-400';
+        buyBtn.textContent = `🔓 ${curr.name} KAUFEN ($${curr.price.toLocaleString()})`;
       }
+    }
+
+    function renderDealershipModal() {
+      const grid = document.getElementById('dealer-grid');
+      if (!grid) return;
+      const query = (document.getElementById('dealer-search').value || '').toLowerCase();
+      const brandFilter = document.getElementById('dealer-filter-brand').value;
+      const sortMode = document.getElementById('dealer-sort').value;
+
+      let filtered = CARS.filter(c => {
+        if (brandFilter === 'OWNED' && !state.ownedCars.includes(c.id)) return false;
+        if (brandFilter !== 'ALL' && brandFilter !== 'OWNED' && c.brand !== brandFilter) return false;
+        if (query && !c.name.toLowerCase().includes(query) && !c.brand.toLowerCase().includes(query)) return false;
+        return true;
+      });
+
+      if (sortMode === 'price_asc') filtered.sort((a, b) => a.price - b.price);
+      else if (sortMode === 'price_desc') filtered.sort((a, b) => b.price - a.price);
+      else if (sortMode === 'hp_desc') filtered.sort((a, b) => b.baseHp - a.baseHp);
+
+      grid.innerHTML = '';
+      filtered.forEach(c => {
+        const owned = state.ownedCars.includes(c.id);
+        const selected = state.selectedCar === c.id;
+        const card = document.createElement('div');
+        card.className = `p-3 rounded-xl border flex flex-col justify-between transition ${
+          selected ? 'bg-cyan-950/60 border-cyan-400 neon-border' : 'bg-slate-900/85 border-slate-800 hover:border-slate-600'
+        }`;
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between text-[10px] uppercase font-cyber text-slate-400 mb-1">
+              <span>${c.brand} • ${c.bodyType.toUpperCase()}</span>
+              <span class="text-cyan-300">${c.drivetrain}</span>
+            </div>
+            <div class="font-cyber font-bold text-xs text-white mb-1">${c.name}</div>
+            <div class="text-xs text-slate-300">${c.baseHp} PS • ${c.weight} kg</div>
+          </div>
+          <div class="mt-3 flex gap-1.5">
+            <button class="btn-preview flex-1 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-slate-200">
+              👁️ Vorschau
+            </button>
+            <button class="btn-action flex-1 py-1.5 rounded-lg font-cyber font-bold text-[11px] ${
+              owned ? 'bg-emerald-500 text-slate-950' : 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+            }">
+              ${owned ? '✓ WÄHLEN' : `$${c.price.toLocaleString()}`}
+            </button>
+          </div>
+        `;
+        card.querySelector('.btn-preview').onclick = () => {
+          state.selectedCar = c.id;
+          ensureCarConfig(c.id);
+          saveGame();
+          renderAllUI();
+          buildGarageScene();
+          document.getElementById('dealer-modal').classList.add('hidden');
+        };
+        card.querySelector('.btn-action').onclick = () => {
+          if (!owned) {
+            if (state.cash < c.price) {
+              alert('Nicht genug Cash! Klicke oben rechts auf +$100k oder fahre ein Rennen.');
+              return;
+            }
+            state.cash -= c.price;
+            state.ownedCars.push(c.id);
+          }
+          state.selectedCar = c.id;
+          ensureCarConfig(c.id);
+          saveGame();
+          renderAllUI();
+          buildGarageScene();
+          renderDealershipModal();
+        };
+        grid.appendChild(card);
+      });
     }
 
     function renderModeAndTrackLists() {
@@ -1592,7 +2507,7 @@
       const activeCat = TUNING_CATEGORIES.find(c => c.id === state.selectedCat) || TUNING_CATEGORIES[0];
       const itemsBox = document.getElementById('tuning-items-list');
       itemsBox.innerHTML = '';
-      const cfg = state.carConfigs[state.selectedCar];
+      const cfg = ensureCarConfig(state.selectedCar);
 
       activeCat.items.forEach(item => {
         const equipped = cfg.parts[activeCat.id] === item.id;
@@ -1614,7 +2529,7 @@
         card.querySelector('button').onclick = () => {
           if (equipped) return;
           if (state.cash < item.price) {
-            alert('Nicht genug Cash! Klicke oben rechts auf +$50k Bonus oder fahre ein Rennen.');
+            alert('Nicht genug Cash! Klicke oben rechts auf +$100k.');
             return;
           }
           state.cash -= item.price;
@@ -1628,12 +2543,12 @@
     }
 
     function renderStanceSection() {
-      const cfg = state.carConfigs[state.selectedCar];
+      const cfg = ensureCarConfig(state.selectedCar);
       const swatchBox = document.getElementById('paint-swatches');
       swatchBox.innerHTML = '';
       PAINT_COLORS.forEach(hex => {
         const b = document.createElement('button');
-        b.className = `w-7 h-7 rounded-full border-2 ${cfg.paint === hex ? 'border-white scale-110' : 'border-slate-700'}`;
+        b.className = `w-6 h-6 rounded-full border-2 ${cfg.paint === hex ? 'border-white scale-110' : 'border-slate-700'}`;
         b.style.backgroundColor = hex;
         b.onclick = () => {
           cfg.paint = hex;
@@ -1644,30 +2559,98 @@
         swatchBox.appendChild(b);
       });
 
-      const rhSlider = document.getElementById('slider-ride-height');
-      const camSlider = document.getElementById('slider-camber');
-      rhSlider.value = cfg.rideHeight || 0;
-      camSlider.value = cfg.camber || -2;
+      document.getElementById('slider-ride-height').value = cfg.rideHeight || 0;
+      document.getElementById('slider-camber').value = cfg.camber || -2;
       document.getElementById('lbl-ride-height').textContent = `${cfg.rideHeight || 0} mm`;
       document.getElementById('lbl-camber').textContent = `${cfg.camber || -2}°`;
+      document.getElementById('chk-roofbox').checked = !!cfg.roofBox;
     }
 
     function renderAllUI() {
       renderTopStats();
-      renderCarList();
+      renderQuickCars();
       renderModeAndTrackLists();
       renderTuningSection();
       renderStanceSection();
     }
 
-    // Event Listener für Tabs & Buttons
+    // Event-Bindings
+    document.getElementById('btn-open-dealer').addEventListener('click', () => {
+      renderDealershipModal();
+      document.getElementById('dealer-modal').classList.remove('hidden');
+    });
+    document.getElementById('btn-close-dealer').addEventListener('click', () => {
+      document.getElementById('dealer-modal').classList.add('hidden');
+    });
+    document.getElementById('dealer-search').addEventListener('input', renderDealershipModal);
+    document.getElementById('dealer-filter-brand').addEventListener('change', renderDealershipModal);
+    document.getElementById('dealer-sort').addEventListener('change', renderDealershipModal);
+
+    document.getElementById('btn-buy-current-car').addEventListener('click', () => {
+      const car = CARS.find(c => c.id === state.selectedCar);
+      if (state.cash < car.price) {
+        alert('Nicht genug Cash! Klicke oben rechts auf +$100k.');
+        return;
+      }
+      state.cash -= car.price;
+      state.ownedCars.push(car.id);
+      saveGame();
+      renderAllUI();
+    });
+
+    // Glücks-Kiste (Mystery Crate)
+    document.getElementById('btn-mystery-crate').addEventListener('click', () => {
+      initAudio();
+      if (state.cash < 15000) {
+        alert('Für die Glücks-Kiste brauchst du $15,000!');
+        return;
+      }
+      state.cash -= 15000;
+      const locked = CARS.filter(c => !state.ownedCars.includes(c.id));
+      const toast = document.getElementById('crate-toast');
+      if (Math.random() < 0.55 && locked.length > 0) {
+        const wonCar = locked[Math.floor(Math.random() * locked.length)];
+        state.ownedCars.push(wonCar.id);
+        state.selectedCar = wonCar.id;
+        ensureCarConfig(wonCar.id);
+        document.getElementById('crate-title').textContent = `NEUES AUTO: ${wonCar.name}!`;
+        document.getElementById('crate-sub').textContent = `Wert: $${wonCar.price.toLocaleString()} • Direkt in deiner Garage!`;
+        buildGarageScene();
+      } else {
+        const prize = [30000, 50000, 120000, 250000][Math.floor(Math.random() * 4)];
+        state.cash += prize;
+        document.getElementById('crate-title').textContent = 'CASH JACKPOT!';
+        document.getElementById('crate-sub').textContent = `Du hast +$${prize.toLocaleString()} gewonnen!`;
+      }
+      saveGame();
+      renderAllUI();
+      playBackfirePop();
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3000);
+    });
+
+    document.getElementById('btn-weather-cycle').addEventListener('click', () => {
+      weatherIdx = (weatherIdx + 1) % WEATHER_PRESETS.length;
+      document.getElementById('btn-weather-cycle').textContent = WEATHER_PRESETS[weatherIdx].label;
+    });
+
+    document.getElementById('btn-garage-rev').addEventListener('click', () => {
+      initAudio();
+      flameTimer = 0.45;
+      playBackfirePop();
+    });
+    document.getElementById('btn-garage-hop').addEventListener('click', () => {
+      initAudio();
+      hopOffsetY = 0.7;
+      playSparkSound();
+    });
+
     document.querySelectorAll('.garage-tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.garage-tab-btn').forEach(b => {
           b.className = 'garage-tab-btn flex-1 py-1.5 rounded-lg font-cyber text-xs font-bold bg-slate-800 text-slate-300';
         });
         btn.className = 'garage-tab-btn flex-1 py-1.5 rounded-lg font-cyber text-xs font-bold bg-cyan-500 text-slate-950';
-
         const tab = btn.getAttribute('data-tab');
         document.getElementById('tab-content-parts').classList.toggle('hidden', tab !== 'parts');
         document.getElementById('tab-content-stance').classList.toggle('hidden', tab !== 'stance');
@@ -1677,7 +2660,7 @@
     });
 
     document.getElementById('slider-ride-height').addEventListener('input', e => {
-      const cfg = state.carConfigs[state.selectedCar];
+      const cfg = ensureCarConfig(state.selectedCar);
       cfg.rideHeight = Number(e.target.value);
       document.getElementById('lbl-ride-height').textContent = `${cfg.rideHeight} mm`;
       saveGame();
@@ -1685,33 +2668,28 @@
     });
 
     document.getElementById('slider-camber').addEventListener('input', e => {
-      const cfg = state.carConfigs[state.selectedCar];
+      const cfg = ensureCarConfig(state.selectedCar);
       cfg.camber = Number(e.target.value);
       document.getElementById('lbl-camber').textContent = `${cfg.camber}°`;
       saveGame();
       buildGarageScene();
     });
 
-    document.getElementById('picker-neon').addEventListener('input', e => {
-      state.carConfigs[state.selectedCar].neon = e.target.value;
+    document.getElementById('chk-roofbox').addEventListener('change', e => {
+      const cfg = ensureCarConfig(state.selectedCar);
+      cfg.roofBox = e.target.checked;
       saveGame();
       buildGarageScene();
     });
 
-    document.getElementById('btn-buy-car').addEventListener('click', () => {
-      const car = CARS.find(c => c.id === state.selectedCar);
-      if (state.cash < car.price) {
-        alert('Nicht genug Cash! Nutze den +$50k Bonus-Button oben rechts.');
-        return;
-      }
-      state.cash -= car.price;
-      state.ownedCars.push(car.id);
+    document.getElementById('picker-neon').addEventListener('input', e => {
+      ensureCarConfig(state.selectedCar).neon = e.target.value;
       saveGame();
-      renderAllUI();
+      buildGarageScene();
     });
 
     document.getElementById('btn-add-cash').addEventListener('click', () => {
-      state.cash += 50000;
+      state.cash += 100000;
       saveGame();
       renderTopStats();
     });
@@ -1725,7 +2703,7 @@
 
     document.getElementById('btn-start-race').addEventListener('click', () => {
       if (!state.ownedCars.includes(state.selectedCar)) {
-        alert('Bitte kaufe dieses Fahrzeug zuerst oder wähle ein freigeschaltetes Auto!');
+        alert('Bitte kaufe dieses Auto zuerst (grüner Button links) oder wähle eines deiner freigeschalteten Fahrzeuge!');
         return;
       }
       startRace();
@@ -1747,10 +2725,9 @@
     document.getElementById('btn-camera-view').addEventListener('click', () => {
       cameraMode = (cameraMode + 1) % 3;
       const names = ['Chase', 'Cockpit/Hood', 'Heli-Far'];
-      document.getElementById('btn-camera-view').textContent = `🎥 Kamera: ${names[cameraMode]}`;
+      document.getElementById('btn-camera-view').textContent = `🎥 Cam: ${names[cameraMode]}`;
     });
 
-    // Multiplayer-Buttons & Auto-URL-Invite
     document.getElementById('btn-mp-join').addEventListener('click', () => {
       connectMultiplayerRoom(document.getElementById('mp-room-input').value || 'NOVA-1');
     });
@@ -1760,14 +2737,12 @@
       connectMultiplayerRoom(code);
       const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(code)}`;
       navigator.clipboard.writeText(inviteUrl).catch(() => {});
-      document.getElementById('mp-info-text').textContent = `✅ Einladungs-Link kopiert: ${inviteUrl}`;
+      document.getElementById('mp-info-text').textContent = `✅ Link kopiert: ${inviteUrl}`;
     });
 
-    // DSGVO & Passwort-Gate prüfen
+    // DSGVO & Passwort-Gate
     const gateModal = document.getElementById('gate-modal');
-    if (!state.authAccepted) {
-      gateModal.classList.remove('hidden');
-    }
+    if (!state.authAccepted) gateModal.classList.remove('hidden');
     document.getElementById('gate-submit-btn').addEventListener('click', () => {
       const pass = document.getElementById('gate-pass-input').value.trim().toUpperCase();
       if (pass !== '' && pass !== 'NOVA' && pass !== 'ADMIN' && pass !== 'VIP') {
@@ -1780,23 +2755,42 @@
       initAudio();
     });
 
-    // Prüfen ob ?room=CODE in der URL übergeben wurde
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('room')) {
-      connectMultiplayerRoom(urlParams.get('room'));
-    } else {
-      connectMultiplayerRoom('NOVA-1');
-    }
+    connectMultiplayerRoom(urlParams.get('room') || 'NOVA-1');
 
-    // --- 12. RENDER-LOOP ---
+    // --- 16. HAUPT-RENDER-LOOP (INKL. ANIMIERTER 3D-STRECKEN-LANDMARKS) ---
     let lastFrameTime = performance.now();
     function animate(now) {
       requestAnimationFrame(animate);
       const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
       lastFrameTime = now;
 
+      // Airride Hop & Backfire-Flammen abklingen lassen
+      if (hopOffsetY > 0) hopOffsetY = Math.max(0, hopOffsetY - dt * 2.2);
+      if (flameTimer > 0) {
+        flameTimer -= dt;
+        playerFlameCones.forEach(f => {
+          f.visible = true;
+          f.scale.setScalar(0.85 + Math.random() * 0.45);
+        });
+      } else {
+        playerFlameCones.forEach(f => { f.visible = false; });
+      }
+
+      // Animierte 3D-Landmarks bewegen (Windräder, UFO, Boote, Zeppelin, Pyramidenkogel-Beacon)
+      animatedProps.forEach(p => {
+        if (p.type === 'spinY') p.mesh.rotation.y += p.speed * dt;
+        else if (p.type === 'spinZ') p.mesh.rotation.z += p.speed * dt;
+        else if (p.type === 'orbit') {
+          p.angle += p.speed * dt;
+          p.mesh.position.set(Math.cos(p.angle) * p.radius, p.y, Math.sin(p.angle) * p.radius);
+          p.mesh.rotation.y = -p.angle;
+        }
+      });
+
       if (!inRace) {
-        if (!isDraggingGarage) garageOrbitAngle += dt * 0.35;
+        if (!isDraggingGarage) garageOrbitAngle += dt * 0.32;
+        if (playerMesh) playerMesh.position.y = hopOffsetY;
         camera.position.set(
           Math.sin(garageOrbitAngle) * 6.8,
           2.35,
@@ -1805,18 +2799,18 @@
         camera.lookAt(0, 0.65, 0);
       } else if (playerMesh) {
         updateRacePhysics(dt);
-        const dist = cameraMode === 0 ? 7.2 : cameraMode === 1 ? -0.4 : 12.5;
-        const height = cameraMode === 0 ? 2.6 : cameraMode === 1 ? 1.35 : 4.8;
+        const dist = cameraMode === 0 ? 7.4 : cameraMode === 1 ? -0.4 : 13.0;
+        const height = cameraMode === 0 ? 2.65 : cameraMode === 1 ? 1.35 : 5.0;
         const targetCamPos = new THREE.Vector3(
           playerMesh.position.x - Math.sin(raceState.yaw) * dist,
           playerMesh.position.y + height,
           playerMesh.position.z - Math.cos(raceState.yaw) * dist
         );
-        camera.position.lerp(targetCamPos, 0.18);
+        camera.position.lerp(targetCamPos, 0.2);
         const lookAhead = new THREE.Vector3(
-          playerMesh.position.x + Math.sin(raceState.yaw) * 8,
-          playerMesh.position.y + 0.8,
-          playerMesh.position.z + Math.cos(raceState.yaw) * 8
+          playerMesh.position.x + Math.sin(raceState.yaw) * 8.5,
+          playerMesh.position.y + 0.85,
+          playerMesh.position.z + Math.cos(raceState.yaw) * 8.5
         );
         camera.lookAt(lookAhead);
       }
@@ -1831,7 +2825,6 @@
       updateMobileHudVisibility();
     });
 
-    // Initialisierung starten
     renderAllUI();
     buildGarageScene();
     updateMobileHudVisibility();
