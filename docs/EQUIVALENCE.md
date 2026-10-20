@@ -105,6 +105,24 @@ it does not claim mathematical identity for every possible input or device.
 
 ## Deliberate differences
 
+### Inherited banked-road clipping
+
+The archived original V6 controller also places the vehicle at the nearest
+road-center sample height instead of the road surface height at its lateral
+offset. On a banked turn, the raised road edge can therefore cover the vehicle.
+This behavior is preserved in the rewrite pending maintainer approval to change
+the original mechanics.
+
+![Clipping reproduced in the original V6 controller](equivalence/original-banked-edge.png)
+
+This is a controlled reproduction in the archived original application: on
+Wörthersee, sample 373, the test places the starter Golf six metres toward the
+raised edge, then runs 120 original physics frames. It is a seeded diagnostic
+fixture, not a naturally driven race or a Rust screenshot. The lateral road
+rise is approximately 1.54248 metres while the vehicle uses centerline height;
+measurements are in `equivalence/original-banked-edge.json`. No clipping fix is
+included in this PR. A separate correction can be provided if requested.
+
 - The lobby uses the local Rust WebSocket relay, not the external PeerJS broker.
   Explicit connect/create/leave controls, up to eight drivers and host-only
   configuration/start are retained. It is not pixel-matched to the old lobby.
