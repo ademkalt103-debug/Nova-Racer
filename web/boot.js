@@ -1,17 +1,17 @@
-"use strict";
-(async()=>{
-  const host=window.novaHost, canvas=host.canvas;
-  const response=await fetch("nova-client.wasm");if(!response.ok)throw Error("Build nova-client.wasm first");
-  const {instance}=await WebAssembly.instantiate(await response.arrayBuffer(),{env:host.env});
-  host.bind(instance.exports.memory);instance.exports.nova_init();document.getElementById("loading").hidden=true;
-  let keys=0,pressed=0,mx=-1,my=-1,click=0,last=performance.now();
-  const codes={KeyW:1,ArrowUp:1,KeyS:2,ArrowDown:2,KeyA:4,ArrowLeft:4,KeyD:8,ArrowRight:8,Space:16,ShiftLeft:32,ShiftRight:32,KeyP:64,KeyR:128,KeyC:256,Escape:512,KeyM:1024};
-  const held=new Set();const rebuild=()=>{keys=0;for(const code of held)keys|=codes[code]||0;};
-  window.addEventListener("keydown",e=>{const bit=codes[e.code];if(bit){e.preventDefault();held.add(e.code);rebuild();if(!e.repeat)pressed|=bit;}});
-  window.addEventListener("keyup",e=>{held.delete(e.code);rebuild();});
-  window.addEventListener("blur",()=>{held.clear();keys=0;if(window.novaState?.racing&&!window.novaState?.paused)pressed|=64;});
-  canvas.addEventListener("pointermove",e=>{const r=canvas.getBoundingClientRect();mx=(e.clientX-r.left)*canvas.width/r.width;my=(e.clientY-r.top)*canvas.height/r.height;});
-  canvas.addEventListener("pointerdown",e=>{const r=canvas.getBoundingClientRect();mx=(e.clientX-r.left)*canvas.width/r.width;my=(e.clientY-r.top)*canvas.height/r.height;click=1;canvas.focus();});
-  for(const button of document.querySelectorAll("#touch button")){const bit=Number(button.dataset.key||button.dataset.press);const release=()=>{keys&=~bit;};button.addEventListener("pointerdown",e=>{e.preventDefault();button.setPointerCapture(e.pointerId);if(button.dataset.press)pressed|=bit;else keys|=bit;});for(const type of ["pointerup","pointercancel","lostpointercapture"])button.addEventListener(type,release);}
-  function frame(t){const aspect=innerWidth/innerHeight;canvas.height=Math.max(740,innerHeight);canvas.width=Math.max(960,Math.ceil(canvas.height*aspect));instance.exports.nova_frame(canvas.width,canvas.height,Math.min(0.05,(t-last)/1000),keys,pressed,mx,my,click);last=t;pressed=0;click=0;requestAnimationFrame(frame);}requestAnimationFrame(frame);
-})().catch(e=>{document.getElementById("loading").textContent="Could not load NOVA RACER: "+e.message;console.error(e);});
+import {Presentation} from './presentation.js';
+// This host exposes browser APIs; it cannot change Rust saves or simulation state.
+let memory,presenter,socket;const messages=[],events=[];const decoder=new TextDecoder(),encoder=new TextEncoder();const saveKey='novaRacerRustSaveV1',legacyKey='novaRacerV6NextLevelSave';
+const decode=(p,n)=>decoder.decode(new Uint8Array(memory.buffer,p,n));
+function dispatch(event){if(events.length<128)events.push(JSON.stringify(event));}
+function connect(){if(socket){socket.onclose=null;socket.close();}const u=new URL('/race',location.href);u.protocol=location.protocol==='https:'?'wss:':'ws:';socket=new WebSocket(u);socket.onopen=()=>messages.push(JSON.stringify({type:'transportOpen'}));socket.onclose=()=>messages.push(JSON.stringify({type:'transportClosed'}));socket.onerror=()=>messages.push(JSON.stringify({type:'error',message:'Relay connection failed'}));socket.onmessage=e=>{if(typeof e.data==='string'&&e.data.length<=32768&&messages.length<256)messages.push(e.data);};}
+const env={nr_clear(){},nr_rect(){},nr_text(){},nr_poly(){},nr_line(){},nr_audio(){},
+ nr_read(kind,p,cap){let s='';if(kind===0){try{s=localStorage.getItem(saveKey)||localStorage.getItem(legacyKey)||'';}catch{}}
+  else if(kind===1){const d=new Date();s=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}else if(kind===2)s=messages.shift()||'';else if(kind===6)s='faithful';else if(kind===7)s=events.shift()||'';const bytes=encoder.encode(s);if(bytes.length>cap)return 0;new Uint8Array(memory.buffer,p,bytes.length).set(bytes);return bytes.length;},
+ nr_write(kind,p,n){const s=decode(p,n);if(kind===0){try{localStorage.setItem(saveKey,s);}catch{}}
+  else if(kind===1){if(socket?.readyState===WebSocket.OPEN&&socket.bufferedAmount<65536)socket.send(s);}else if(kind===2)connect();else if(kind===4)fetch('/api/leaderboard',{method:'POST',headers:{'Content-Type':'application/json'},body:s}).catch(()=>{});else if(kind===6){const v=JSON.parse(s);if(!presenter)presenter=new Presentation(v,dispatch);presenter.apply(v);window.novaPresentation=presenter;}else if(kind===9)window.novaState=JSON.parse(s);}
+};
+const keyBits={KeyW:1,ArrowUp:1,KeyS:2,ArrowDown:2,KeyA:4,ArrowLeft:4,KeyD:8,ArrowRight:8,Space:16,ShiftLeft:32,ShiftRight:32,KeyP:64,KeyR:128,KeyC:256,Escape:512,KeyM:1024};let keys=0,pressed=0;const held=new Set();const rebuild=()=>{keys=0;for(const code of held)keys|=keyBits[code]||0;};
+window.addEventListener('keydown',e=>{if(e.target instanceof HTMLInputElement||e.target instanceof HTMLSelectElement||e.target instanceof HTMLTextAreaElement)return;const bit=keyBits[e.code];if(bit){e.preventDefault();held.add(e.code);rebuild();if(!e.repeat)pressed|=bit;}});window.addEventListener('keyup',e=>{held.delete(e.code);rebuild();});window.addEventListener('blur',()=>{held.clear();keys=0;if(window.novaState?.racing&&!window.novaState.paused)pressed|=64;});
+for(const [id,bit]of [['touch-left',4],['touch-right',8],['touch-gas',1],['touch-brake',2],['touch-drift',16],['touch-nos',32]]){const b=document.getElementById(id);b?.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys|=bit;});for(const type of ['pointerup','pointercancel','lostpointercapture'])b?.addEventListener(type,()=>{keys&=~bit;});}
+function unlock(){try{presenter?.sound.init();presenter?.sound.ctx?.resume().catch(()=>{});}catch{}}window.addEventListener('pointerdown',unlock);window.addEventListener('keydown',unlock);window.addEventListener('pagehide',()=>{socket?.close();presenter?.sound.stopRaceAudio();});
+try{const r=await fetch('nova-client.wasm');if(!r.ok)throw Error('Build WASM client first');const {instance}=await WebAssembly.instantiate(await r.arrayBuffer(),{env});memory=instance.exports.memory;instance.exports.nova_init();let last=performance.now();function frame(t){instance.exports.nova_frame(innerWidth,innerHeight,Math.min(0.05,(t-last)/1000),keys,pressed,-1,-1,0);last=t;pressed=0;requestAnimationFrame(frame);}requestAnimationFrame(frame);}catch(e){console.error(e);const node=document.createElement('p');node.textContent='NOVA RACER failed to initialize: '+e.message;document.body.appendChild(node);}

@@ -1,0 +1,47 @@
+[
+  {
+    "scene": "dealership",
+    "mean_absolute_rgb_error": 0.0,
+    "pixels_over_12_rgb": 0.0
+  },
+  {
+    "scene": "garage",
+    "mean_absolute_rgb_error": 0.0,
+    "pixels_over_12_rgb": 0.0
+  },
+  {
+    "scene": "gt3",
+    "mean_absolute_rgb_error": 0.0,
+    "pixels_over_12_rgb": 0.0
+  },
+  {
+    "scene": "hyper",
+    "mean_absolute_rgb_error": 0.0,
+    "pixels_over_12_rgb": 0.0
+  },
+  {
+    "scene": "moped",
+    "mean_absolute_rgb_error": 0.0,
+    "pixels_over_12_rgb": 0.0
+  },
+  {
+    "scene": "mower",
+    "mean_absolute_rgb_error": 0.0,
+    "pixels_over_12_rgb": 0.0
+  },
+  {
+    "scene": "suv",
+    "mean_absolute_rgb_error": 0.0,
+    "pixels_over_12_rgb": 0.0
+  },
+  {
+    "scene": "tuktuk",
+    "mean_absolute_rgb_error": 0.0,
+    "pixels_over_12_rgb": 0.0
+  },
+  {
+    "scene": "tuning",
+    "mean_absolute_rgb_error": 0.0,
+    "pixels_over_12_rgb": 0.0
+  }
+]

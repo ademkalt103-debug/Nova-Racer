@@ -374,7 +374,7 @@ impl App {
 async fn secure_headers(req: axum::extract::Request, next: axum::middleware::Next) -> Response {
     let mut r = next.run(req).await;
     let h = r.headers_mut();
-    for(k,v)in[("x-content-type-options","nosniff"),("x-frame-options","DENY"),("referrer-policy","no-referrer"),("cache-control","no-store"),("content-security-policy","default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'")]{h.insert(axum::http::HeaderName::from_static(k),axum::http::HeaderValue::from_static(v));}
+    for(k,v)in[("x-content-type-options","nosniff"),("x-frame-options","DENY"),("referrer-policy","no-referrer"),("cache-control","no-store"),("content-security-policy","default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'")]{h.insert(axum::http::HeaderName::from_static(k),axum::http::HeaderValue::from_static(v));}
     r
 }
 async fn status(State(a): State<App>) -> Json<Value> {
@@ -431,11 +431,27 @@ async fn submit(State(a): State<App>, Json(v): Json<Value>) -> Json<Value> {
 }
 async fn asset(a: &App, name: &str) -> Response {
     let file = match name {
-        "index.html" | "gl.js" | "bridge.js" | "boot.js" | "style.css" | "nova-client.wasm" => name,
+        "index.html"
+        | "boot.js"
+        | "nova-client.wasm"
+        | "presentation.js"
+        | "presentation-methods.js"
+        | "visual-assets.js"
+        | "three.module.js"
+        | "ui.css"
+        | "fonts.css" => name,
+        _ if name.starts_with("font-")
+            && name.ends_with(".woff2")
+            && name[5..name.len() - 6].parse::<u8>().is_ok_and(|n| n < 9) =>
+        {
+            name
+        }
         _ => return StatusCode::NOT_FOUND.into_response(),
     };
     let mime = if file.ends_with(".wasm") {
         "application/wasm"
+    } else if file.ends_with(".woff2") {
+        "font/woff2"
     } else if file.ends_with(".js") {
         "text/javascript; charset=utf-8"
     } else if file.ends_with(".css") {

@@ -41,16 +41,16 @@ pub struct Car {
     pub default_color: String,
     pub sound_profile: String,
     pub stats: Stats,
-    pub base_kmh: f32,
+    pub base_kmh: f64,
 }
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Stats {
-    pub top_speed: f32,
-    pub accel: f32,
-    pub handling: f32,
-    pub drift: f32,
-    pub brakes: f32,
+    pub top_speed: f64,
+    pub accel: f64,
+    pub handling: f64,
+    pub drift: f64,
+    pub brakes: f64,
 }
 #[derive(Clone, Debug, Deserialize)]
 pub struct Tuning {
@@ -69,7 +69,7 @@ pub struct Track {
     pub ground: u32,
     pub road: u32,
     pub reward: u64,
-    pub points: Vec<[f32; 3]>,
+    pub points: Vec<[f64; 3]>,
 }
 #[derive(Clone, Debug, Deserialize)]
 pub struct Mode {
@@ -221,6 +221,14 @@ impl Save {
             .unwrap_or(0)
     }
     pub fn upgrade(&mut self, id: &str, cat: &Catalog) -> Result<(), &'static str> {
+        self.install_stage(id, self.stage(id).saturating_add(1), cat)
+    }
+    pub fn install_stage(
+        &mut self,
+        id: &str,
+        target: u8,
+        cat: &Catalog,
+    ) -> Result<(), &'static str> {
         if !self.starter_chosen {
             return Err("Choose a starter first");
         }
@@ -230,10 +238,14 @@ impl Save {
             .find(|t| t.id == id)
             .ok_or("Unknown part")?;
         let stage = self.stage(id);
-        if stage >= 4 {
+        if target > 4 {
             return Err("Maximum stage installed");
         }
-        let cost = (part.cost as f64 * f64::from(stage + 1) * 1.3).round() as u64;
+        let cost = if target > stage {
+            (part.cost as f64 * f64::from(target) * 1.3).round() as u64
+        } else {
+            0
+        };
         if self.cash < cost {
             return Err("Not enough cash");
         }
@@ -241,23 +253,28 @@ impl Save {
         self.tuning
             .entry(self.selected_car_id.clone())
             .or_default()
-            .insert(id.into(), stage + 1);
+            .insert(id.into(), target);
         Ok(())
     }
-    pub fn stats(&self, cat: &Catalog) -> (Stats, f32) {
+    pub fn stats(&self, cat: &Catalog) -> (Stats, f64) {
         let car = cat.car(&self.selected_car_id);
         let mut s = car.stats;
         let mut sum = 0;
         for p in &cat.tuning {
-            let n = f32::from(self.stage(&p.id));
+            let n = f64::from(self.stage(&p.id));
             sum += self.stage(&p.id) as u32;
-            s.top_speed = (s.top_speed + p.bonus.top_speed * n).min(10.);
-            s.accel = (s.accel + p.bonus.accel * n).min(10.);
-            s.handling = (s.handling + p.bonus.handling * n).min(10.);
-            s.drift = (s.drift + p.bonus.drift * n).min(10.);
-            s.brakes = (s.brakes + p.bonus.brakes * n).min(10.);
+            // Catalog values already have two decimals; zero stages leave them unchanged.
+            if n == 0. {
+                continue;
+            }
+            let fixed = |v: f64| format!("{v:.2}").parse::<f64>().unwrap().min(10.);
+            s.top_speed = fixed(s.top_speed + p.bonus.top_speed * n);
+            s.accel = fixed(s.accel + p.bonus.accel * n);
+            s.handling = fixed(s.handling + p.bonus.handling * n);
+            s.drift = fixed(s.drift + p.bonus.drift * n);
+            s.brakes = fixed(s.brakes + p.bonus.brakes * n);
         }
-        (s, (car.base_kmh + sum as f32 * 3.2).round())
+        (s, (car.base_kmh + sum as f64 * 3.2).round())
     }
     pub fn claim(&mut self, id: &str, cat: &Catalog) -> Result<(), &'static str> {
         let c = cat
@@ -309,6 +326,7 @@ impl Save {
             return Ok("Duplicate car: +$12000");
         }
         self.owned_cars.push(car.into());
+        self.selected_car_id = car.into();
         self.challenge_progress
             .insert("p_cars".into(), self.owned_cars.len() as u64);
         Ok(car)
@@ -317,12 +335,12 @@ impl Save {
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
 pub struct V3 {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
 }
 impl V3 {
-    pub fn new(x: f32, y: f32, z: f32) -> Self {
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
     }
     pub fn plus(self, b: Self) -> Self {
@@ -331,16 +349,16 @@ impl V3 {
     pub fn minus(self, b: Self) -> Self {
         Self::new(self.x - b.x, self.y - b.y, self.z - b.z)
     }
-    pub fn scale(self, n: f32) -> Self {
+    pub fn scale(self, n: f64) -> Self {
         Self::new(self.x * n, self.y * n, self.z * n)
     }
-    pub fn length(self) -> f32 {
+    pub fn length(self) -> f64 {
         (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
     }
     pub fn unit(self) -> Self {
         self.scale(1. / self.length().max(0.0001))
     }
-    pub fn dot(self, b: Self) -> f32 {
+    pub fn dot(self, b: Self) -> f64 {
         self.x * b.x + self.y * b.y + self.z * b.z
     }
     pub fn cross(self, b: Self) -> Self {
@@ -361,7 +379,7 @@ pub struct Sample {
 #[derive(Clone, Debug)]
 pub struct Road {
     pub samples: Vec<Sample>,
-    pub length: f32,
+    pub length: f64,
 }
 impl Road {
     pub fn new(track: &Track) -> Self {
@@ -370,37 +388,30 @@ impl Road {
             .iter()
             .map(|p| V3::new(p[0] * 1.45, p[1] * 1.35, p[2] * 1.45))
             .collect();
-        let mut dense = Vec::new();
         let n = p.len();
-        for i in 0..n {
-            for k in 0..100 {
-                let t = k as f32 / 100.;
-                let a = p[(i + n - 1) % n];
-                let b = p[i];
-                let c = p[(i + 1) % n];
-                let d = p[(i + 2) % n];
-                dense.push(
-                    b.scale(2.)
-                        .plus(c.minus(a).scale(t))
-                        .plus(
-                            a.scale(2.)
-                                .minus(b.scale(5.))
-                                .plus(c.scale(4.))
-                                .minus(d)
-                                .scale(t * t),
-                        )
-                        .plus(
-                            a.scale(-1.)
-                                .plus(b.scale(3.))
-                                .minus(c.scale(3.))
-                                .plus(d)
-                                .scale(t * t * t),
-                        )
-                        .scale(0.5),
-                );
-            }
-        }
-        dense.push(dense[0]);
+        let curve = |u: f64| {
+            let t = u * n as f64;
+            let i = t.floor() as usize % n;
+            let t = t.fract();
+            let a = p[(i + n - 1) % n];
+            let b = p[i];
+            let c = p[(i + 1) % n];
+            let d = p[(i + 2) % n];
+            let calc = |p0: f64, p1: f64, p2: f64, p3: f64| {
+                let v0 = (p2 - p0) * 0.5;
+                let v1 = (p3 - p1) * 0.5;
+                let c2 = -3. * p1 + 3. * p2 - 2. * v0 - v1;
+                let c3 = 2. * p1 - 2. * p2 + v0 + v1;
+                p1 + v0 * t + c2 * (t * t) + c3 * (t * t * t)
+            };
+            V3::new(
+                calc(a.x, b.x, c.x, d.x),
+                calc(a.y, b.y, c.y, d.y),
+                calc(a.z, b.z, c.z, d.z),
+            )
+        };
+        // Match Three.js r160 arcLengthDivisions=200 and getUtoTmapping.
+        let dense: Vec<_> = (0..=200).map(|i| curve(i as f64 / 200.)).collect();
         let mut lengths = vec![0.];
         for i in 1..dense.len() {
             lengths.push(lengths[i - 1] + dense[i].minus(dense[i - 1]).length());
@@ -409,12 +420,12 @@ impl Road {
         let mut points = Vec::new();
         let mut j = 1;
         for i in 0..420 {
-            let dist = length * i as f32 / 420.;
+            let dist = (i as f64 / 420.) * length;
             while j < lengths.len() - 1 && lengths[j] < dist {
                 j += 1;
             }
             let a = (dist - lengths[j - 1]) / (lengths[j] - lengths[j - 1]).max(0.0001);
-            points.push(dense[j - 1].scale(1. - a).plus(dense[j].scale(a)));
+            points.push(curve(((j - 1) as f64 + a) / 200.));
         }
         let samples = (0..420)
             .map(|i| {
@@ -440,7 +451,7 @@ impl Road {
             .collect();
         Self { samples, length }
     }
-    pub fn closest(&self, p: V3) -> (usize, f32) {
+    pub fn closest(&self, p: V3) -> (usize, f64) {
         self.samples
             .iter()
             .enumerate()
@@ -464,40 +475,51 @@ pub struct Input {
 }
 #[derive(Clone, Debug)]
 pub struct Bot {
-    pub progress: f32,
-    pub speed: f32,
-    pub lane: f32,
-    pub cooldown: f32,
+    pub progress: f64,
+    pub speed: f64,
+    pub lane: f64,
+    pub cooldown: f64,
 }
 #[derive(Clone, Debug)]
 pub struct Race {
     pub pos: V3,
-    pub yaw: f32,
-    pub speed: f32,
-    pub nos: f32,
+    pub yaw: f64,
+    pub speed: f64,
+    pub nos: f64,
     pub lap: u32,
     pub max_laps: u32,
     pub sample: usize,
-    pub countdown: f32,
-    pub elapsed: f32,
+    pub last_sample: usize,
+    pub countdown: f64,
+    pub elapsed: f64,
     pub finished: bool,
     pub paid: bool,
     pub paused: bool,
-    pub drift_angle: f32,
+    pub drift_angle: f64,
     pub drift_points: u64,
     pub total_drift: u64,
     pub combo: u32,
-    pub drift_time: f32,
+    pub drift_time: f64,
     pub stunt_cash: u64,
     pub toast: String,
-    pub toast_time: f32,
+    pub toast_time: f64,
     pub bots: Vec<Bot>,
     pub rank: u32,
-    pub vel_y: f32,
-    pub airtime: f32,
-    pub slip_time: f32,
-    pub checkpoints: u8,
+    pub vel_y: f64,
+    pub airtime: f64,
+    pub slip_time: f64,
     pub nitro_active: bool,
+    pub move_meters: f64,
+    pub drifting: bool,
+    pub smoke_pos: V3,
+    pub stunts: Vec<Stunt>,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct Stunt {
+    pub label: String,
+    pub cash: u64,
+    pub nos: f64,
+    pub style: String,
 }
 impl Race {
     pub fn new(road: &Road, mode: &str) -> Self {
@@ -510,6 +532,7 @@ impl Race {
             lap: 1,
             max_laps: if mode == "timeattack" { 1 } else { 3 },
             sample: 0,
+            last_sample: 0,
             countdown: 2.55,
             elapsed: 0.,
             finished: false,
@@ -525,9 +548,9 @@ impl Race {
             toast_time: 0.,
             bots: (0..3)
                 .map(|i| Bot {
-                    progress: 0.025 * (i + 1) as f32,
-                    speed: 165. + i as f32 * 22.,
-                    lane: (i as f32 - 1.) * 3.1,
+                    progress: 0.025 * (i + 1) as f64,
+                    speed: 165. + i as f64 * 22.,
+                    lane: (i as f64 - 1.) * 3.1,
                     cooldown: 0.,
                 })
                 .collect(),
@@ -535,8 +558,11 @@ impl Race {
             vel_y: 0.,
             airtime: 0.,
             slip_time: 0.,
-            checkpoints: 0,
             nitro_active: false,
+            move_meters: 0.,
+            drifting: false,
+            smoke_pos: s.point,
+            stunts: Vec::new(),
         }
     }
     pub fn reset(&mut self, road: &Road) {
@@ -548,18 +574,39 @@ impl Race {
         self.airtime = 0.;
         self.drift_points = 0;
     }
-    fn stunt(&mut self, text: &str, cash: u64, nos: f32) {
+    fn stunt(&mut self, text: &str, cash: u64, nos: f64) {
         self.stunt_cash += cash;
         self.nos = (self.nos + nos).min(100.);
         self.toast = format!("{text} +${cash}");
         self.toast_time = 2.3;
+        let (label, style) = match text {
+            "DRIFT COMBO" => (
+                format!("💨 DRIFT COMBO x{}!", self.combo),
+                "border-amber-400 text-amber-300",
+            ),
+            "AIRTIME LANDING" => (
+                "🦅 AIRTIME LANDING!".into(),
+                "border-fuchsia-400 text-fuchsia-300",
+            ),
+            "NEAR MISS" => ("⚡ NEAR MISS!".into(), "border-cyan-400 text-cyan-300"),
+            _ => (
+                "🔥 SLIPSTREAM!".into(),
+                "border-emerald-400 text-emerald-300",
+            ),
+        };
+        self.stunts.push(Stunt {
+            label,
+            cash,
+            nos,
+            style: style.into(),
+        });
     }
     pub fn step(
         &mut self,
-        dt: f32,
+        dt: f64,
         input: Input,
         stats: Stats,
-        max_speed: f32,
+        max_speed: f64,
         road: &Road,
         save: &mut Save,
     ) {
@@ -567,24 +614,30 @@ impl Race {
             return;
         }
         let dt = dt.clamp(0., 0.05);
+        self.stunts.clear();
         self.toast_time = (self.toast_time - dt).max(0.);
         if self.countdown > 0. {
             self.countdown = (self.countdown - dt).max(0.);
-            return;
+            if self.countdown < 1e-12 {
+                self.countdown = 0.;
+            }
         }
-        self.elapsed += dt;
-        self.nitro_active = input.nos && self.nos > 0. && self.speed > 40.;
+        let can_drive = self.countdown <= 1e-12;
+        if can_drive {
+            self.elapsed += dt;
+        }
+        self.nitro_active = can_drive && input.nos && self.nos > 0. && self.speed > 40.;
         self.nos = (self.nos + dt * if self.nitro_active { -26. } else { 3.5 }).clamp(0., 100.);
-        if input.gas {
+        if can_drive && input.gas {
             self.speed +=
-                (32. + stats.accel * 6.8) * dt * if self.nitro_active { 1.42 } else { 1. };
-        } else if input.brake {
+                (32. + stats.accel * 6.8) * if self.nitro_active { 1.42 } else { 1. } * dt;
+        } else if can_drive && input.brake {
             self.speed = if self.speed > 2. {
                 (self.speed - (65. + stats.brakes * 9.5) * dt).max(0.)
             } else {
                 (self.speed - 28. * dt).max(-35.)
             };
-        } else {
+        } else if can_drive {
             self.speed *= 1. - dt * 0.35;
         }
         self.speed = self
@@ -595,12 +648,14 @@ impl Race {
             .max(self.speed.max(0.).round() as u64);
         save.challenge_progress.insert("p_topspeed".into(), top);
         let steer = i32::from(input.left) - i32::from(input.right);
-        if input.drift {
+        if can_drive && input.drift {
             self.speed *= 1. - dt * 0.45;
         }
-        let drifting = input.drift && steer != 0 && self.speed > 55.;
-        if self.speed.abs() > 2. {
-            self.yaw += steer as f32
+        let drifting = can_drive && input.drift && steer != 0 && self.speed > 55.;
+        self.drifting = drifting;
+        self.smoke_pos = self.pos;
+        if can_drive && self.speed.abs() > 2. {
+            self.yaw += steer as f64
                 * (1.15 + stats.handling * 0.12)
                 * (self.speed.abs() / 110.).min(1.)
                 * if drifting { 1.32 } else { 1. }
@@ -608,10 +663,11 @@ impl Race {
                 * self.speed.signum();
         }
         if drifting {
-            self.drift_angle +=
-                (steer as f32 * (0.42 + stats.drift * 0.025) - self.drift_angle) * dt * 6.5;
+            let t = dt * 6.5;
+            self.drift_angle =
+                (1. - t) * self.drift_angle + t * (steer as f64 * (0.42 + stats.drift * 0.025));
             self.drift_time += dt;
-            let pts = (self.speed * dt * 2.4 * self.combo as f32).round() as u64;
+            let pts = (self.speed * dt * 2.4 * self.combo as f64).round() as u64;
             self.drift_points += pts;
             self.total_drift += pts;
             save.add_progress("d_drift", pts);
@@ -628,8 +684,8 @@ impl Race {
             if self.drift_points >= 350 {
                 self.stunt(
                     "DRIFT COMBO",
-                    (self.drift_points as f32 * 0.35).round() as u64,
-                    self.combo as f32 * 4.,
+                    (self.drift_points as f64 * 0.35).round() as u64,
+                    self.combo as f64 * 4.,
                 );
             }
             self.drift_points = 0;
@@ -638,6 +694,7 @@ impl Race {
             self.drift_angle *= 1. - dt * 8.;
         }
         let meters = self.speed / 3.6 * dt;
+        self.move_meters = meters;
         self.pos.x += self.yaw.sin() * meters;
         self.pos.z += self.yaw.cos() * meters;
         let (idx, dist) = road.closest(self.pos);
@@ -667,47 +724,42 @@ impl Race {
             self.drift_points = 0;
             self.combo = 1;
             if dist > 13.3 {
-                self.pos.x += (sample.point.x - self.pos.x) * dt * 4.;
-                self.pos.z += (sample.point.z - self.pos.z) * dt * 4.;
+                let t = dt * 4.;
+                self.pos.x = (1. - t) * self.pos.x + t * sample.point.x;
+                self.pos.z = (1. - t) * self.pos.z + t * sample.point.z;
             }
         }
-        // Ordered checkpoints prevent start-line oscillation from awarding laps.
-        if dist < 10. {
-            match self.checkpoints {
-                0 if (100..140).contains(&idx) => self.checkpoints = 1,
-                1 if (205..245).contains(&idx) => self.checkpoints = 2,
-                2 if (310..350).contains(&idx) => self.checkpoints = 3,
-                _ => {}
-            }
-            if self.checkpoints == 3 && self.sample > 344 && idx < 75 && self.speed > 0. {
-                self.lap += 1;
-                self.checkpoints = 0;
-                if self.lap > self.max_laps {
-                    self.finished = true;
-                }
+        // V6 counts the sample wrap, including its original edge behavior.
+        if self.last_sample as f64 > 420. * 0.82 && (idx as f64) < 420. * 0.18 {
+            self.lap += 1;
+            if self.lap > self.max_laps {
+                self.finished = true;
+                return;
             }
         }
         self.sample = idx;
+        self.last_sample = idx;
         let mut near = 0;
         let mut slip = false;
-        let player_progress = (self.lap - 1) as f32 + idx as f32 / 420.;
+        let player_progress = idx as f64 / 420.;
         self.rank = 1;
         for bot in &mut self.bots {
-            bot.progress += bot.speed / 3.6 * dt / road.length;
+            if can_drive {
+                bot.progress = (bot.progress + bot.speed / 3600. * dt * 1.15) % 1.;
+            }
             let b = &road.samples[(bot.progress.fract() * 420.) as usize % 420];
             let p = b.point.plus(b.right.scale(bot.lane));
             let delta = p.minus(self.pos);
             let d = delta.length();
-            bot.cooldown = (bot.cooldown - dt).max(0.);
+            if bot.cooldown > 0. {
+                bot.cooldown -= dt;
+            }
             if bot.progress > player_progress {
                 self.rank += 1;
             }
-            if d > 2.2 && d < 4.2 && self.speed > 105. && bot.cooldown <= 0. {
+            if d < 4.2 && self.speed > 105. && bot.cooldown <= 0. {
                 bot.cooldown = 3.;
                 near += 1;
-            }
-            if d < 2.2 {
-                self.speed *= 1. - dt * 2.;
             }
             if d > 4.5
                 && d < 19.
@@ -722,7 +774,9 @@ impl Race {
         }
         if near > 0 {
             save.add_progress("d_nearmiss", near);
-            self.stunt("NEAR MISS", 250 * near, 10.);
+            for _ in 0..near {
+                self.stunt("NEAR MISS", 250, 10.);
+            }
         }
         if slip {
             self.slip_time += dt;
@@ -742,10 +796,8 @@ impl Race {
         self.paid = true;
         save.cash += track.reward + self.stunt_cash;
         save.free_spins += 1;
-        save.add_xp(480 + (self.stunt_cash as f32 * 0.15).round() as u64);
-        if self.rank == 1 {
-            save.add_progress("p_wins", 1);
-        }
+        save.add_xp(480 + (self.stunt_cash as f64 * 0.15).round() as u64);
+        save.add_progress("p_wins", 1);
         true
     }
 }
@@ -894,19 +946,19 @@ mod tests {
         assert_eq!(cash, s.cash);
     }
     #[test]
-    fn start_line_oscillation_cannot_finish() {
+    fn sample_wrap_preserves_original_lap_rule() {
         let c = Catalog::load();
         let road = Road::new(&c.tracks[0]);
         let mut s = Save::default();
         let mut r = Race::new(&road, "timeattack");
         r.countdown = 0.;
-        r.sample = 419;
+        r.last_sample = 419;
         r.pos = road.samples[0].point;
         r.speed = 5.;
         let (stats, max) = s.stats(&c);
         r.step(0.01, Input::default(), stats, max, &road, &mut s);
-        assert_eq!(r.lap, 1);
-        assert!(!r.finished);
+        assert_eq!(r.lap, 2);
+        assert!(r.finished);
     }
     #[test]
     fn every_crate_bucket_and_duplicate_is_accounted() {
@@ -920,6 +972,7 @@ mod tests {
             assert_eq!(s.free_spins, 0);
             if roll >= 86 {
                 assert_eq!(s.owned_cars.len(), 2);
+                assert_eq!(s.selected_car_id, s.owned_cars[1]);
                 s.free_spins = 1;
                 s.spin(roll).unwrap();
                 assert_eq!(s.cash, before + 12000);

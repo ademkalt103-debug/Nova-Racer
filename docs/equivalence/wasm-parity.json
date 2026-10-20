@@ -1,0 +1,7 @@
+{
+  "cases": 72,
+  "frames": 191484,
+  "maxAbsoluteError": 2.842170943040401e-14,
+  "failures": [],
+  "description": "Shipped WASM game export replayed original ordinary input traces after its real countdown. Edge cases requiring position injection excluded. Economy/finish and visible physics compared."
+}

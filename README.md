@@ -1,10 +1,13 @@
 # NOVA RACER — Rust Edition
 
-The racing simulation, catalog, progression, tuning, challenges, crate rewards,
-menus, 3D projection and drawing commands run in **Rust compiled to WebAssembly**.
-The HTTP/WebSocket relay is Rust too. Small local JavaScript files provide the
-browser's Canvas, keyboard/pointer, localStorage, audio and WebSocket APIs.
-There is no JavaScript game engine, CDN, PeerJS or Node server in the active game.
+The racing simulation, catalog, progression, tuning purchases, challenge claims,
+crate draws/settlement and multiplayer client run in **Rust compiled to WebAssembly**.
+The HTTP/WebSocket relay is Rust too. The original Three.js r160 procedural
+vehicles, workshop, road materials, lighting/shadows, DOM layout and WebAudio
+presentation are preserved as a local browser adapter. DOM events dispatch
+validated actions to Rust; the display receives frozen state snapshots.
+No browser adapter may purchase an upgrade, grant a reward, write authoritative
+game state or run racing physics. No CDN, PeerJS or Node server is used in play.
 
 ## Build and play
 
@@ -51,8 +54,7 @@ and the same build steps. Hosting deployment is not part of the local tests.
 The four existing modes are preserved: Circuit, Drift Attack, Sprint and Street
 Duel. As in the upstream V6 client, Sprint uses one lap and the other modes use
 three. Drift points are tracked and submitted for Drift Attack; Street Duel
-retains the shared circuit race logic. Checkpoints and win counting correct
-upstream shortcuts.
+retains the shared circuit race logic. The original sample-wrap lap rule, AI ranking and finish-counting semantics are preserved.
 
 ## Friend races
 
@@ -80,7 +82,7 @@ cargo audit
 The core integration driver completes all 16 track/mode combinations through
 normal throttle/brake/steering input and checks single settlement. It does not
 teleport or change laps. Unit tests cover economy, saves, crates, drift/nitro,
-checkpoint protection, host authority, capacity and cleanup.
+sample-wrap parity, host authority, capacity and cleanup.
 
 For live tests, start the server on port 3123 (or set `NOVA_URL`):
 
@@ -93,11 +95,12 @@ Protocol tests need Node 22+. Browser tests additionally need Playwright and a
 Chromium browser in your test environment. `PLAYWRIGHT_MODULE` can name an
 existing installed module; `CHROME_PATH` can name an existing Chrome executable.
 No npm installation or third-party script executes automatically. The browser
-test uses isolated contexts and ordinary clicks/keys, captures screenshots, and
+test uses isolated contexts and ordinary DOM clicks/keys, captures screenshots, and
 rejects page errors or third-party network requests.
 
 For a full browser sprint with accelerated animation time (no state/position
-injection), generate the reference road and run the additional browser test:
+injection), generate the reference road and run the additional browser test.
+It thins intermediate GPU draws to accelerate the test, then renders the finish UI:
 
 ```sh
 cargo run --quiet -p nova-core --example roads > evidence/roads.json
@@ -111,24 +114,35 @@ verified results are in [docs/VALIDATION.md](docs/VALIDATION.md).
 ## Implementation and compatibility
 
 - `crates/core`: deterministic rules, typed catalog/save, spline/road sampling.
-- `crates/client`: Rust UI, software 3D renderer, physics and multiplayer client.
+- `crates/client`: Rust UI action/state controller, physics and multiplayer client.
 - `crates/server`: bounded HTTP/WebSocket relay with static-file allowlisting.
-- `web`: local browser host/loader and compiled WASM (generated, not committed).
+- `web`: local original presentation, pinned Three.js/fonts/CSS and the WASM host.
+- `third_party`: renderer/font/style provenance, hashes and license notices.
 - `legacy`: original sources retained for reference and save migration.
 
-This is a browser Rust/WASM rewrite, not a native desktop executable. Rendering
-uses locally drawn flat-shaded geometry rather than Three.js materials/shadows;
-the UI and procedural audio are reimplemented, not pixel/audio-identical. The
-keyboard layout is designed for desktop and landscape play. Audio requires
-a browser user gesture. Physical touch devices have not been certified.
+This is a browser Rust/WASM rewrite, not a native desktop executable. The first
+software-rendered preview has been replaced by the original visual/audio
+presentation: wedge bodies, specialty vehicle meshes, tuning-dependent parts,
+workshop geometry, glass/metal materials, shadows, banking, wheel steering/spin,
+nitro flames, smoke/skids, speed lines, camera presets/shake, SVG HUD, starter
+cards, dealership delta previews and crate reel. Rust owns the underlying rules.
+See [docs/EQUIVALENCE.md](docs/EQUIVALENCE.md) for deterministic comparisons and
+their limits. Audio requires a user gesture; physical touch devices are unverified.
 
 Legacy `novaRacerV6NextLevelSave` is imported when no Rust save exists. New writes
 use `novaRacerRustSaveV1`; the old key is preserved. Unknown cars/tracks/modes and
 invalid saves are normalized; network messages never write arbitrary DOM HTML
-or load remote executable code. The archived HTML is not served by the new
+or load remote executable code. The archived full application is not served by the new
 server. Catalog extraction is a literal-only parser and does not evaluate the
 upstream application's code.
 
 The repository's Apache-2.0 `LICENSE` is retained. Original catalog names and
 legacy source attribution remain in place. See [SECURITY-REVIEW.md](SECURITY-REVIEW.md)
 for the security review and its limits.
+
+Presentation regeneration is an optional development operation, not a game
+build prerequisite. `tools/equivalence-assets.cjs` extracts only display methods
+from the reviewed original, rejects remaining state-write handlers and copies
+the pinned renderer from an explicitly supplied `NOVA_STYLE_DEPS` directory.
+Static CSS/fonts are committed with licenses/provenance. Normal Cargo builds
+never install npm packages or run the historical stylesheet compiler.

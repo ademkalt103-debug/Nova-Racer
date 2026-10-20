@@ -16,9 +16,9 @@ fn a_driver_can_finish_every_track_and_mode_and_receive_one_reward() {
                 let target = road.samples[(idx + 5) % 420].point;
                 let d = target.minus(race.pos);
                 let desired = d.x.atan2(d.z);
-                let error = (desired - race.yaw + std::f32::consts::PI)
-                    .rem_euclid(std::f32::consts::TAU)
-                    - std::f32::consts::PI;
+                let error = (desired - race.yaw + std::f64::consts::PI)
+                    .rem_euclid(std::f64::consts::TAU)
+                    - std::f64::consts::PI;
                 race.step(
                     1. / 60.,
                     Input {
@@ -40,8 +40,8 @@ fn a_driver_can_finish_every_track_and_mode_and_receive_one_reward() {
             }
             assert!(
                 race.finished,
-                "{} / {} failed at sample {} lap {} checkpoints {}",
-                track.id, mode.id, race.sample, race.lap, race.checkpoints
+                "{} / {} failed at sample {} lap {}",
+                track.id, mode.id, race.sample, race.lap
             );
             assert!(race.elapsed > 20.);
             assert!(race.settle(&mut save, track));

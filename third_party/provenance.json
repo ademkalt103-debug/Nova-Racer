@@ -1,0 +1,21 @@
+{
+  "three": {
+    "version": "0.160.0",
+    "source": "https://registry.npmjs.org/three/-/three-0.160.0.tgz",
+    "package_integrity": "sha512-DLU8lc0zNIPkM7rH5/e1Ks1Z8tWCGRq6g8mPowdDJpw1CFBJMU7UoJjC6PefXW7z//SSl0b2+GCw14LB+uDhng==",
+    "asset": "web/three.module.js",
+    "sha256": "76dea8151bc9352aef3528b4262e249b2604f62543828328db978d060d61a495",
+    "license": "MIT"
+  },
+  "presentation_source": {
+    "base_commit": "42a8aa98e19903d745b760ddac1a2c2b96d1c179",
+    "sha256": "160b87ec4b3700aecd6a730d247089b8535648ab2af35aa2e359a6106134c7fb",
+    "sha256_normalized_lf": "8fc4226b721082f80c5dd10186cc8b51a10169f6f449a630f4fbed39c39aa0a2"
+  },
+  "stylesheet": {
+    "compiler": "tailwindcss@3.4.17",
+    "runtime": "static CSS only",
+    "note": "Build tooling is isolated; no npm install or CSS compiler executes during game build/play.",
+    "sha256": "baae919eca2a1be7be371091dd75ff95e69e6c907507014b019d3b9b8d27d1e5"
+  }
+}

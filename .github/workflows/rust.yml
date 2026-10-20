@@ -9,6 +9,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Rust checks and full race simulations
         run: |
+          node tools/verify-vendor.cjs
           rustup component add rustfmt clippy
           rustup target add wasm32-unknown-unknown
           cargo fmt --all -- --check

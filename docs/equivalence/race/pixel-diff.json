@@ -1,0 +1,17 @@
+[
+  {
+    "scene": "straight",
+    "mean_absolute_rgb_error": 0.0,
+    "pixels_over_12_rgb": 0.0
+  },
+  {
+    "scene": "drift",
+    "mean_absolute_rgb_error": 0.0,
+    "pixels_over_12_rgb": 0.0
+  },
+  {
+    "scene": "nitro",
+    "mean_absolute_rgb_error": 0.0,
+    "pixels_over_12_rgb": 0.0
+  }
+]
