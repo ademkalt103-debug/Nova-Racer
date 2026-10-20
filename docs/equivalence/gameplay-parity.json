@@ -1,0 +1,8 @@
+{
+  "cases": 92,
+  "failures": [],
+  "frames": 194368,
+  "maxAbsoluteError": 5.684341886080802e-14,
+  "worstAt": "\"woerthersee/offroad\" frame 123 field 3: 361.51026584318373 vs 361.5102658431838",
+  "description": "Actual archived V6 controller vs Rust f64, same input and dt for every frame. Includes seeded edge cases and automated complete races."
+}

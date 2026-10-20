@@ -1,0 +1,303 @@
+{
+  "cases": [
+    {
+      "name": "garage",
+      "id": "starter_golf2",
+      "tab": "drive",
+      "states": [
+        {
+          "name": "starter_golf2",
+          "cash": 123456,
+          "stats": {
+            "topSpeed": 6.6,
+            "accel": 7.05,
+            "handling": 9.4,
+            "drift": 7.4,
+            "brakes": 7.1,
+            "maxKmh": 244,
+            "pi": 695
+          }
+        },
+        {
+          "name": "starter_golf2",
+          "cash": 123456,
+          "stats": {
+            "accel": 7.05,
+            "brakes": 7.1,
+            "drift": 7.4,
+            "handling": 9.4,
+            "maxKmh": 244,
+            "pi": 695,
+            "topSpeed": 6.6
+          }
+        }
+      ]
+    },
+    {
+      "name": "tuning",
+      "id": "starter_e36",
+      "tab": "tuning",
+      "states": [
+        {
+          "name": "starter_e36",
+          "cash": 123456,
+          "stats": {
+            "topSpeed": 7.1,
+            "accel": 7.15,
+            "handling": 9.1,
+            "drift": 9.7,
+            "brakes": 7.1,
+            "maxKmh": 261,
+            "pi": 743
+          }
+        },
+        {
+          "name": "starter_e36",
+          "cash": 123456,
+          "stats": {
+            "accel": 7.15,
+            "brakes": 7.1,
+            "drift": 9.7,
+            "handling": 9.1,
+            "maxKmh": 261,
+            "pi": 743,
+            "topSpeed": 7.1
+          }
+        }
+      ]
+    },
+    {
+      "name": "moped",
+      "id": "cult_moped",
+      "tab": "tuning",
+      "states": [
+        {
+          "name": "cult_moped",
+          "cash": 123456,
+          "stats": {
+            "topSpeed": 5.4,
+            "accel": 8.05,
+            "handling": 10,
+            "drift": 10,
+            "brakes": 6.6,
+            "maxKmh": 197,
+            "pi": 741
+          }
+        },
+        {
+          "name": "cult_moped",
+          "cash": 123456,
+          "stats": {
+            "accel": 8.05,
+            "brakes": 6.6,
+            "drift": 10,
+            "handling": 10,
+            "maxKmh": 197,
+            "pi": 741,
+            "topSpeed": 5.4
+          }
+        }
+      ]
+    },
+    {
+      "name": "tuktuk",
+      "id": "cult_tuktuk",
+      "tab": "tuning",
+      "states": [
+        {
+          "name": "cult_tuktuk",
+          "cash": 123456,
+          "stats": {
+            "topSpeed": 7.2,
+            "accel": 9.35,
+            "handling": 8.6,
+            "drift": 10,
+            "brakes": 6.3,
+            "maxKmh": 257,
+            "pi": 767
+          }
+        },
+        {
+          "name": "cult_tuktuk",
+          "cash": 123456,
+          "stats": {
+            "accel": 9.35,
+            "brakes": 6.3,
+            "drift": 10,
+            "handling": 8.6,
+            "maxKmh": 257,
+            "pi": 767,
+            "topSpeed": 7.2
+          }
+        }
+      ]
+    },
+    {
+      "name": "mower",
+      "id": "cult_mower",
+      "tab": "tuning",
+      "states": [
+        {
+          "name": "cult_mower",
+          "cash": 123456,
+          "stats": {
+            "topSpeed": 6.3,
+            "accel": 9.85,
+            "handling": 10,
+            "drift": 10,
+            "brakes": 6.1,
+            "maxKmh": 234,
+            "pi": 782
+          }
+        },
+        {
+          "name": "cult_mower",
+          "cash": 123456,
+          "stats": {
+            "accel": 9.85,
+            "brakes": 6.1,
+            "drift": 10,
+            "handling": 10,
+            "maxKmh": 234,
+            "pi": 782,
+            "topSpeed": 6.3
+          }
+        }
+      ]
+    },
+    {
+      "name": "dealership",
+      "id": "wagon_rs6",
+      "tab": "dealership",
+      "states": [
+        {
+          "name": "wagon_rs6",
+          "cash": 123456,
+          "stats": {
+            "topSpeed": 10,
+            "accel": 10,
+            "handling": 10,
+            "drift": 9.3,
+            "brakes": 9.6,
+            "maxKmh": 347,
+            "pi": 905
+          }
+        },
+        {
+          "name": "wagon_rs6",
+          "cash": 123456,
+          "stats": {
+            "accel": 10,
+            "brakes": 9.6,
+            "drift": 9.3,
+            "handling": 10,
+            "maxKmh": 347,
+            "pi": 905,
+            "topSpeed": 10
+          }
+        }
+      ]
+    },
+    {
+      "name": "suv",
+      "id": "suv_urus",
+      "tab": "tuning",
+      "states": [
+        {
+          "name": "suv_urus",
+          "cash": 123456,
+          "stats": {
+            "topSpeed": 9.7,
+            "accel": 9.95,
+            "handling": 10,
+            "drift": 9.5,
+            "brakes": 9.1,
+            "maxKmh": 335,
+            "pi": 893
+          }
+        },
+        {
+          "name": "suv_urus",
+          "cash": 123456,
+          "stats": {
+            "accel": 9.95,
+            "brakes": 9.1,
+            "drift": 9.5,
+            "handling": 10,
+            "maxKmh": 335,
+            "pi": 893,
+            "topSpeed": 9.7
+          }
+        }
+      ]
+    },
+    {
+      "name": "gt3",
+      "id": "gt3_992",
+      "tab": "tuning",
+      "states": [
+        {
+          "name": "gt3_992",
+          "cash": 123456,
+          "stats": {
+            "topSpeed": 10,
+            "accel": 10,
+            "handling": 10,
+            "drift": 9.9,
+            "brakes": 10,
+            "maxKmh": 344,
+            "pi": 923
+          }
+        },
+        {
+          "name": "gt3_992",
+          "cash": 123456,
+          "stats": {
+            "accel": 10,
+            "brakes": 10,
+            "drift": 9.9,
+            "handling": 10,
+            "maxKmh": 344,
+            "pi": 923,
+            "topSpeed": 10
+          }
+        }
+      ]
+    },
+    {
+      "name": "hyper",
+      "id": "hyper_jesko",
+      "tab": "tuning",
+      "states": [
+        {
+          "name": "hyper_jesko",
+          "cash": 123456,
+          "stats": {
+            "topSpeed": 10,
+            "accel": 10,
+            "handling": 10,
+            "drift": 10,
+            "brakes": 10,
+            "maxKmh": 441,
+            "pi": 925
+          }
+        },
+        {
+          "name": "hyper_jesko",
+          "cash": 123456,
+          "stats": {
+            "accel": 10,
+            "brakes": 10,
+            "drift": 10,
+            "handling": 10,
+            "maxKmh": 441,
+            "pi": 925,
+            "topSpeed": 10
+          }
+        }
+      ]
+    }
+  ],
+  "maxRoadError": 0.0005717594711407025,
+  "description": "Rendering fixtures use the same save, fixed clock and fixed visual randomness; finite CSS transitions settle before capture. These are not earned progression or human play evidence."
+}

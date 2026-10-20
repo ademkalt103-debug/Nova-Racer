@@ -1,0 +1,8 @@
+# Preserve pinned upstream source/license bytes, including their whitespace.
+web/three.module.js text eol=lf -whitespace linguist-vendored
+third_party/*.txt -whitespace
+web/ui.css text eol=lf
+web/*.woff2 -text
+third_party/*.json text eol=lf
+*.sh text eol=lf
+*.png -text

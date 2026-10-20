@@ -1,0 +1,30 @@
+name: Rust
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Rust checks and full race simulations
+        run: |
+          node tools/verify-vendor.cjs
+          rustup component add rustfmt clippy
+          rustup target add wasm32-unknown-unknown
+          cargo fmt --all -- --check
+          cargo clippy --locked --workspace --all-targets -- -D warnings
+          cargo test --locked --workspace
+          cargo build --locked --release -p nova-client --target wasm32-unknown-unknown
+          cp target/wasm32-unknown-unknown/release/nova_client.wasm web/nova-client.wasm
+          cargo build --locked -p nova-server
+      - name: Live protocol and input-boundary checks
+        run: |
+          PORT=3123 ./target/debug/nova-server > server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3123/healthz; then break; fi
+            sleep 1
+          done
+          node tools/protocol-test.cjs

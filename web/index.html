@@ -1,0 +1,592 @@
+<!--
+================================================================================
+  NOVA RACER 3D — v6.0 "NEXT LEVEL" (COMPLETE REDESIGN & POLISH PASS)
+================================================================================
+  Version:        6.0.0 (ES-Module Architecture, Three.js r160, PeerJS 1.5.2)
+  Steuerung:
+    - W / Pfeil Hoch    : Gas geben
+    - S / Pfeil Runter  : Betriebsbremse (stabil verzögern; Rückwärts erst ab Stillstand)
+    - A, D / Links,Rechts: Lenken (mit sichtbarem Vorderrad-Einschlag)
+    - SPACE             : Handbremse / Clutch-Kick (leitet echten Drift ab 55 km/h ein)
+    - SHIFT             : Lachgas-Boost (NOS)
+    - C                 : Kameraansicht im Rennen wechseln (Chase / Far / Hood)
+  Feature-Übersicht:
+    - Zero-to-Hero Progression: Start auf Level 1, $25.000 Cash, 0 XP, Pflichtwahl aus
+      3 Kult-Startern (Golf 2 GTI, Civic EG6, E36 328i) inkl. 3D-Vorschau & Sound-Check.
+    - 3D-Werkstatt: Epoxid-Spiegelboden, Gitterrost, 2-Säulen-Hebebühne, Werkzeugwagen,
+      Reifenstapel, Neonröhren & schwebende Staubpartikel (< 60k Triangles, <= 500 Partikel).
+    - Bauteil-Kamera: Smooth Lerp-Zoom (~0.6s Ease-in-Out) auf Felgen, Spoiler, Auspuff,
+      Front und Heck beim Tuning.
+    - Autohaus & Silhouetten: Animierte 0-10 Stat-Balken mit Live-Delta-Preview (Grün/Rot),
+      Klassen-Silhouetten (SVG), Seltenheits-Badges & prozeduralem Sound-Check.
+    - Kult-Spezialmodelle & Keilform-Chassiskörper: Schräge Frontscheiben, lenkende
+      Vorderräder sowie Spezial-Meshes für Supermoto/Moped mit Fahrer (Stark Varg,
+      Beta RR / Puch Maxi), Racing-TukTuk und Turbo-Rasenmäher.
+    - 3D-Strecken mit Höhenprofil & Kurven-Banking: Echte Y-Wellen (Sprungkuppen für
+      Airtime), Querneigung in Kurven sowie Quaternion-Pitch/Roll-Anpassung des Autos.
+    - Game Juice: Dynamisches FOV (60 -> 82°), Speed-Lines-Canvas, Kamera-Shake,
+      Drift-Qualm, persistente Reifenspuren (Skidmarks), Stunt-Ticker (Near Miss,
+      Drift Combo, Airtime, Slipstream) mit Cash- & NOS-Belohnung.
+    - SVG-Drehzahlmesser: Rundinstrument mit glühender Nadel, Schaltblitz (>90% RPM)
+      und integriertem Digital-Tacho/Ganganzeige.
+    - Slot-Wheel Mystery Crate: Interaktives Roulette-Rad (1 Gratis-Dreh nach jedem
+      Rennen, weitere für $7.500), gewichtete Seltenheiten, kein Cheat-Button.
+    - PeerJS Multiplayer: Eigene `remotePlayersGroup` außerhalb der `raceGroup`,
+      synchronisierter Rennstart-Countdown und lineare Positions-/Rotations-Interpolation.
+  Bekannte Limits:
+    - Web Audio API benötigt eine erste Nutzerinteraktion (Klick/Taste) zur Aktivierung.
+    - PeerJS nutzt den öffentlichen Cloud-Broker; hinter strikten symmetrischen NATs
+      kann ein eigener TURN-Server erforderlich sein.
+================================================================================
+-->
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Nova Racer 3D v6.0 — Next Level Edition</title>
+
+  <!-- Gepinnte Abhängigkeiten: Tailwind CDN, Google Fonts, PeerJS 1.5.2, Three.js r160 ES-Module -->
+
+  <link rel="stylesheet" href="ui.css" />
+  <link rel="stylesheet" href="fonts.css" />
+
+  <style>
+    :root {
+      --neon-cyan: #00f3ff;
+      --neon-magenta: #ff007f;
+      --workshop-orange: #f97316;
+    }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #06080f;
+      color: #f8fafc;
+      font-family: 'Inter', sans-serif;
+    }
+    .font-display {
+      font-family: 'Orbitron', sans-serif;
+    }
+    .glass-panel {
+      background: rgba(11, 15, 25, 0.78);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .neon-cyan-glow {
+      box-shadow: 0 0 20px rgba(0, 243, 255, 0.25), inset 0 0 12px rgba(0, 243, 255, 0.08);
+      border-color: rgba(0, 243, 255, 0.45);
+    }
+    .workshop-border {
+      border-color: rgba(249, 115, 22, 0.45);
+      box-shadow: 0 0 20px rgba(249, 115, 22, 0.18);
+    }
+    .tacho-needle {
+      filter: drop-shadow(0 0 6px #00f3ff) drop-shadow(0 0 12px #ff007f);
+      transition: transform 0.04s linear;
+      transform-origin: 110px 110px;
+    }
+    @keyframes pulseShift {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(1.08); }
+    }
+    .shift-active {
+      animation: pulseShift 0.16s infinite;
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); }
+    ::-webkit-scrollbar-thumb { background: rgba(0, 243, 255, 0.45); border-radius: 9999px; }
+  </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden">
+
+  <!-- 3D WEBGL VIEWPORT -->
+  <div id="canvas-container" class="absolute inset-0 z-0" aria-label="3D Viewport"></div>
+
+  <!-- SPEED-LINES OVERLAY CANVAS (Rennen) -->
+  <canvas id="speedlines-canvas" class="hidden fixed inset-0 z-10 pointer-events-none"></canvas>
+
+  <!-- =========================================================================
+       PFLICHT-STARTER-WAHL BEIM ERSTEN START ("ZERO TO HERO")
+       ========================================================================= -->
+  <section id="starter-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex flex-col justify-between p-4 sm:p-8 pointer-events-auto">
+    <div class="max-w-5xl w-full mx-auto glass-panel rounded-2xl p-4 sm:p-6 neon-cyan-glow">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <span class="text-[10px] font-display uppercase tracking-widest px-2.5 py-1 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/40">
+            Zero to Hero • Karriere-Start
+          </span>
+          <h1 class="font-display font-black text-xl sm:text-3xl text-white mt-1">WÄHLE DEINEN ERSTEN STREET-STARTER</h1>
+        </div>
+        <div class="text-right text-xs text-slate-300">
+          <div>Startkapital: <strong class="font-display text-emerald-400">$25.000</strong></div>
+          <div>Ruf-Level: <strong class="font-display text-cyan-400">LVL 1 (0 XP)</strong></div>
+        </div>
+      </div>
+      <p class="text-xs text-slate-400 mt-1">
+        Keine geschenkten Hypercars: Wähle einen der drei Kult-Klassiker für $18.000, behalte $7.000 für erstes Tuning und arbeite dich nach oben.
+      </p>
+    </div>
+
+    <!-- Freier Blick auf das 3D-Auto in der Mitte -->
+    <div class="my-auto pointer-events-none"></div>
+
+    <div class="max-w-5xl w-full mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div id="starter-cards-container" class="contents"></div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       HAUPT-GARAGEN-UI (Verdeckt < 30% des Bildschirms, 3D-Auto zentral frei)
+       ========================================================================= -->
+  <main id="garage-ui" class="relative z-20 w-full h-full flex flex-col justify-between p-3 sm:p-5 pointer-events-none">
+
+    <!-- TOP STATUS BAR -->
+    <header class="glass-panel rounded-2xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 pointer-events-auto">
+      <!-- Brand & Aktuelles Fahrzeug -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-fuchsia-600 flex items-center justify-center font-display font-black text-slate-950 text-base shadow-lg shadow-cyan-500/30">
+          V6
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span id="top-car-class" class="text-[10px] font-display font-bold px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-400/40">CULT</span>
+            <h2 id="top-car-name" class="font-display font-extrabold text-sm sm:text-lg text-white">1990 Golf 2 GTI 16V</h2>
+            <button id="btn-top-soundcheck" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-cyan-500/20 border border-slate-600 hover:border-cyan-400 text-[10px] font-display text-cyan-300 transition" title="Motor Sound-Check">
+              🔊 REV
+            </button>
+          </div>
+          <div class="text-[11px] text-slate-400 flex items-center gap-3">
+            <span id="top-car-pi" class="font-display text-cyan-300 font-bold">PI 310</span>
+            <span>•</span>
+            <span id="top-owned-count">Besitz: 1 Fahrzeug</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Karriere Level / XP / Cash / Crate / Challenges -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <!-- Level & XP Bar -->
+        <div class="bg-slate-900/90 border border-slate-700/80 rounded-xl px-3 py-1.5 flex items-center gap-2.5">
+          <div class="text-center">
+            <div class="text-[9px] text-slate-400 uppercase font-display">Ruf</div>
+            <div id="ui-level" class="font-display font-black text-xs text-cyan-400">LVL 1</div>
+          </div>
+          <div class="w-24 sm:w-28">
+            <div class="flex justify-between text-[9px] text-slate-400 mb-0.5">
+              <span>XP</span>
+              <span id="ui-xp-text">0 / 1000</span>
+            </div>
+            <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div id="ui-xp-bar" class="h-full bg-gradient-to-r from-cyan-400 to-fuchsia-500 transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cash -->
+        <div class="bg-slate-900/90 border border-emerald-500/40 rounded-xl px-3.5 py-1.5 flex items-center gap-1.5">
+          <span class="text-emerald-400 font-display font-black text-xs">$</span>
+          <span id="ui-cash" class="font-display font-bold text-white text-sm sm:text-base">25,000</span>
+        </div>
+
+        <!-- Slot-Crate Button -->
+        <button id="btn-open-crate-modal" class="px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-pink-600 hover:brightness-110 active:scale-95 text-slate-950 font-display font-black text-xs shadow-lg shadow-amber-500/20 transition flex items-center gap-1.5">
+          <span>🎰 SLOT-CRATE</span>
+          <span id="badge-free-spins" class="px-1.5 py-0.5 rounded bg-slate-950 text-amber-300 text-[10px]">0 GRATIS</span>
+        </button>
+
+        <!-- Challenges Toggle -->
+        <button id="btn-toggle-challenges" class="px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-cyan-500/40 text-cyan-300 font-display font-bold text-xs transition">
+          🎯 AUFTRÄGE (6)
+        </button>
+
+        <!-- Audio Toggle -->
+        <button id="btn-toggle-mute" class="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-xs font-bold transition" title="Ton an/aus">
+          🔊
+        </button>
+      </div>
+    </header>
+
+    <!-- MIDDLE AREA: Kompaktes Rechts-Dock (lässt >75% der 3D-Werkstatt komplett frei) -->
+    <div class="flex-1 flex items-center justify-end my-2 overflow-hidden pointer-events-none">
+
+      <!-- TAB 1 PANEL: [🏁 FAHREN] -->
+      <aside id="panel-drive" class="tab-panel glass-panel rounded-2xl p-4 w-full sm:w-88 max-h-full flex flex-col justify-between pointer-events-auto overflow-hidden neon-cyan-glow">
+        <div class="overflow-y-auto pr-1 space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div>
+              <span class="text-[10px] font-display uppercase text-cyan-400">Rennzentrale</span>
+              <h3 class="font-display font-bold text-sm text-white">Strecke & Modus wählen</h3>
+            </div>
+            <div class="flex gap-1">
+              <button id="btn-prev-owned" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-display" title="Vorheriges eigenes Auto">◀</button>
+              <button id="btn-next-owned" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-display" title="Nächstes eigenes Auto">▶</button>
+            </div>
+          </div>
+
+          <!-- Aktuelle Fahrzeug-Kurz-Stats (0-10) -->
+          <div id="drive-current-stats" class="bg-slate-900/75 rounded-xl p-2.5 border border-slate-800 space-y-1.5 text-[11px]"></div>
+
+          <!-- Strecken-Auswahl -->
+          <div>
+            <div class="text-[10px] font-display uppercase text-slate-400 mb-1.5">3D-Strecken (mit Höhenprofil & Banking)</div>
+            <div id="drive-track-list" class="space-y-1.5 max-h-44 overflow-y-auto pr-1"></div>
+          </div>
+
+          <!-- Rennmodus -->
+          <div>
+            <div class="text-[10px] font-display uppercase text-slate-400 mb-1.5">Rennmodus</div>
+            <div id="drive-mode-list" class="grid grid-cols-2 gap-1.5 text-xs"></div>
+          </div>
+        </div>
+
+        <button id="btn-launch-race" class="mt-3 w-full py-3 rounded-xl bg-gradient-to-r from-cyan-400 via-sky-500 to-fuchsia-600 hover:brightness-110 active:scale-[0.98] text-slate-950 font-display font-black text-sm tracking-wider shadow-xl shadow-cyan-500/25 transition">
+          🏁 RENNEN STARTEN
+        </button>
+      </aside>
+
+      <!-- TAB 2 PANEL: [🔧 TUNING-WERKSTATT] -->
+      <aside id="panel-tuning" class="tab-panel hidden glass-panel rounded-2xl p-4 w-full sm:w-96 max-h-full flex flex-col justify-between pointer-events-auto overflow-hidden workshop-border">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+          <div>
+            <span class="text-[10px] font-display uppercase text-orange-400">Werkstatt & Kamera-Fokus</span>
+            <h3 class="font-display font-bold text-sm text-white">Bauteil-Tuning & Lack</h3>
+          </div>
+          <button id="btn-cam-reset-hero" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-orange-500/20 border border-slate-700 hover:border-orange-400 text-[10px] font-display text-orange-300 transition">
+            🎥 HERO-VIEW
+          </button>
+        </div>
+
+        <!-- Kamera-Preset Fokus-Buttons (Felgen, Spoiler, Auspuff, Front, Heck) -->
+        <div class="grid grid-cols-5 gap-1 mb-2.5">
+          <button data-cam="rims" class="cam-preset-btn px-1.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-orange-400 text-[10px] font-display text-slate-200 transition">✨ Felgen</button>
+          <button data-cam="spoiler" class="cam-preset-btn px-1.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-orange-400 text-[10px] font-display text-slate-200 transition">🦅 Spoiler</button>
+          <button data-cam="exhaust" class="cam-preset-btn px-1.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-orange-400 text-[10px] font-display text-slate-200 transition">🔥 Auspuff</button>
+          <button data-cam="front" class="cam-preset-btn px-1.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-orange-400 text-[10px] font-display text-slate-200 transition">❄️ Front</button>
+          <button data-cam="rear" class="cam-preset-btn px-1.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-orange-400 text-[10px] font-display text-slate-200 transition">🛑 Heck</button>
+        </div>
+
+        <!-- 12 Tuning-Kategorien -->
+        <div id="tuning-cat-grid" class="grid grid-cols-4 gap-1 mb-2"></div>
+
+        <!-- Stages Liste -->
+        <div id="tuning-stage-list" class="flex-1 overflow-y-auto space-y-1.5 pr-1"></div>
+
+        <!-- Lack, Felgen & Neon-Unterboden -->
+        <div class="pt-2.5 mt-2 border-t border-slate-800 flex items-center justify-between text-xs">
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <span class="text-slate-400">Lack:</span>
+            <input type="color" id="tune-color-body" value="#00f3ff" class="w-6 h-6 rounded bg-transparent border-0 cursor-pointer" />
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <span class="text-slate-400">Felgen:</span>
+            <input type="color" id="tune-color-rims" value="#fbbf24" class="w-6 h-6 rounded bg-transparent border-0 cursor-pointer" />
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <span class="text-slate-400">Neon:</span>
+            <input type="color" id="tune-color-neon" value="#ff007f" class="w-6 h-6 rounded bg-transparent border-0 cursor-pointer" />
+          </label>
+        </div>
+      </aside>
+
+      <!-- TAB 3 PANEL: [🚘 AUTOHAUS] -->
+      <aside id="panel-dealership" class="tab-panel hidden glass-panel rounded-2xl p-4 w-full sm:w-[430px] max-h-full flex flex-col justify-between pointer-events-auto overflow-hidden neon-cyan-glow">
+        <div>
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+            <div>
+              <span class="text-[10px] font-display uppercase text-cyan-400">Showroom & Vergleich</span>
+              <h3 class="font-display font-bold text-sm text-white">Autohaus & Kult-Spezialmodelle</h3>
+            </div>
+            <select id="dealer-class-filter" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white font-display">
+              <option value="ALL">Alle Klassen</option>
+              <option value="OWNED">Meine Garage</option>
+              <option value="cult">Kult & Spezial</option>
+              <option value="wagon">Wagon / Touring</option>
+              <option value="gt3">GT3 / Track</option>
+              <option value="suv">Performance SUV</option>
+              <option value="hyper">Hypercar</option>
+            </select>
+          </div>
+
+          <!-- Live Stat-Vergleich (0-10) mit Delta-Preview (Grün = besser, Rot = schlechter) -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 mb-2.5">
+            <div class="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+              <span>Vorschau vs. Aktuelles Fahrzeug</span>
+              <span id="dealer-preview-name" class="font-display text-cyan-300 font-bold">—</span>
+            </div>
+            <div id="dealer-delta-bars" class="space-y-1 text-[11px]"></div>
+          </div>
+        </div>
+
+        <!-- Fahrzeugkarten Liste -->
+        <div id="dealer-cards-list" class="flex-1 overflow-y-auto space-y-2 pr-1"></div>
+      </aside>
+
+      <!-- TAB 4 PANEL: [🌐 MULTIPLAYER] -->
+      <aside id="panel-multiplayer" class="tab-panel hidden glass-panel rounded-2xl p-4 w-full sm:w-88 max-h-full flex flex-col justify-between pointer-events-auto overflow-hidden neon-cyan-glow">
+        <div class="space-y-3">
+          <div class="border-b border-slate-800 pb-2">
+            <span class="text-[10px] font-display uppercase text-cyan-400">PeerJS WebRTC Lobby</span>
+            <h3 class="font-display font-bold text-sm text-white">Echtzeit-Multiplayer & Sync</h3>
+          </div>
+
+          <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400">Netzwerk-Status:</span>
+              <span id="mp-status-badge" class="text-xs font-display text-amber-400">Verbinde Broker...</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400">Dein Team-Code:</span>
+              <span id="mp-own-code" class="font-display font-black text-base tracking-widest text-cyan-300">------</span>
+            </div>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-xs text-slate-300 block">Freundes-Code beitreten:</label>
+            <div class="flex gap-2">
+              <input id="mp-target-code" type="text" maxlength="6" placeholder="6-STELLIG"
+                class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-display text-white uppercase focus:outline-none focus:border-cyan-400" />
+              <button id="btn-mp-join" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-display font-black text-xs transition">
+                JOIN
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-3">
+            <div class="text-[10px] font-display uppercase text-slate-400 mb-1.5">Verbundene Fahrer (<span id="mp-peer-count">0</span>)</div>
+            <ul id="mp-peer-list" class="text-xs text-slate-300 space-y-1">
+              <li class="text-slate-500 italic">Noch keine Remote-Spieler verbunden.</li>
+            </ul>
+          </div>
+        </div>
+
+        <button id="btn-mp-sync-start" class="mt-4 w-full py-3 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-500 hover:brightness-110 text-slate-950 font-display font-black text-xs tracking-wider transition">
+          🚦 SYNCHRONISIERTES RENNEN STARTEN
+        </button>
+      </aside>
+    </div>
+
+    <!-- BOTTOM BAR MIT GENAU 4 TABS -->
+    <footer class="glass-panel rounded-2xl p-2 flex items-center justify-center gap-2 sm:gap-4 pointer-events-auto max-w-2xl mx-auto w-full">
+      <button data-tab="drive" class="bottom-tab-btn flex-1 py-2.5 px-3 rounded-xl font-display font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/25">
+        <span>🏁</span><span class="hidden sm:inline">FAHREN</span>
+      </button>
+      <button data-tab="tuning" class="bottom-tab-btn flex-1 py-2.5 px-3 rounded-xl font-display font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-slate-900/80 text-slate-300 hover:text-white">
+        <span>🔧</span><span class="hidden sm:inline">TUNING-WERKSTATT</span>
+      </button>
+      <button data-tab="dealership" class="bottom-tab-btn flex-1 py-2.5 px-3 rounded-xl font-display font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-slate-900/80 text-slate-300 hover:text-white">
+        <span>🚘</span><span class="hidden sm:inline">AUTOHAUS</span>
+      </button>
+      <button data-tab="multiplayer" class="bottom-tab-btn flex-1 py-2.5 px-3 rounded-xl font-display font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-slate-900/80 text-slate-300 hover:text-white">
+        <span>🌐</span><span class="hidden sm:inline">MULTIPLAYER</span>
+      </button>
+    </footer>
+  </main>
+
+  <!-- =========================================================================
+       CHALLENGES / AUFTRÄGE MODAL (3 Daily + 3 Permanent)
+       ========================================================================= -->
+  <section id="challenges-modal" class="hidden fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass-panel rounded-3xl p-5 sm:p-6 max-w-2xl w-full neon-cyan-glow space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div>
+          <span class="text-[10px] font-display uppercase text-cyan-400">Ruf & Belohnungen</span>
+          <h2 class="font-display font-black text-xl text-white">TÄGLICHE & KARRIERE-AUFTRÄGE</h2>
+        </div>
+        <button id="btn-close-challenges" class="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-display font-bold text-xs">
+          ✕ SCHLIESSEN
+        </button>
+      </div>
+      <div id="challenges-modal-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[65vh] overflow-y-auto pr-1"></div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       MYSTERY CRATE SLOT-RAD MODAL
+       ========================================================================= -->
+  <section id="crate-modal" class="hidden fixed inset-0 z-40 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass-panel rounded-3xl p-6 max-w-xl w-full text-center neon-cyan-glow space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="text-left">
+          <span class="text-[10px] font-display uppercase text-amber-400">Gewichtetes Glücksrad</span>
+          <h2 class="font-display font-black text-xl text-white">🎰 MYSTERY SLOT-CRATE</h2>
+        </div>
+        <button id="btn-close-crate" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-display text-xs">
+          ✕
+        </button>
+      </div>
+
+      <!-- Slot-Wheel Strip -->
+      <div class="relative w-full h-28 bg-slate-950 rounded-2xl border-2 border-cyan-400/50 overflow-hidden flex items-center">
+        <!-- Mittel-Indikator -->
+        <div class="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-1 bg-amber-400 z-20 shadow-[0_0_12px_#fbbf24]"></div>
+        <div id="slot-reel" class="flex items-center gap-2 px-4 transition-transform duration-75"></div>
+      </div>
+
+      <div id="crate-result-banner" class="text-sm font-display font-bold text-cyan-300 h-6">
+        1 Gratis-Dreh pro abgeschlossenem Rennen • Weitere Drehs: $7.500
+      </div>
+
+      <div class="flex gap-3 justify-center">
+        <button id="btn-spin-crate" class="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-400 to-pink-500 hover:brightness-110 text-slate-950 font-display font-black text-sm shadow-lg shadow-amber-500/25 transition">
+          🎲 JETZT DREHEN
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       RENN-HUD OVERLAY (Mit rundem SVG-Drehzahlmesser, Stunt-Ticker & Challenges)
+       ========================================================================= -->
+  <section id="race-hud" class="hidden fixed inset-0 z-30 pointer-events-none flex flex-col justify-between p-4 sm:p-6">
+
+    <!-- TOP ROW: Position/Runde links | Countdown & Live Stunt-Ticker mittig | Challenge-Tracker rechts -->
+    <div class="flex items-start justify-between gap-4">
+      <!-- Links: Renn-Telemetrie -->
+      <div class="glass-panel rounded-2xl p-3.5 flex items-center gap-5 pointer-events-auto">
+        <div>
+          <div class="text-[10px] text-slate-400 uppercase font-display">Pos</div>
+          <div id="hud-pos" class="font-display font-black text-2xl text-cyan-400">1/4</div>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-400 uppercase font-display">Runde</div>
+          <div id="hud-lap" class="font-display font-black text-2xl text-white">1/3</div>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-400 uppercase font-display">Zeit</div>
+          <div id="hud-time" class="font-display font-bold text-xl text-emerald-300">00:00.0</div>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-400 uppercase font-display">Drift Combo</div>
+          <div id="hud-drift-combo" class="font-display font-black text-xl text-amber-400">x1 • 0</div>
+        </div>
+      </div>
+
+      <!-- Mitte: Countdown + Gestapelter Stunt-Ticker (max. 3 Toasts) -->
+      <div class="flex flex-col items-center gap-2">
+        <div id="hud-countdown" class="font-display font-black text-5xl sm:text-7xl text-cyan-300 drop-shadow-[0_0_25px_rgba(0,243,255,0.9)]">
+          3
+        </div>
+        <div id="stunt-ticker-stack" class="flex flex-col items-center gap-1.5 w-72 sm:w-80"></div>
+      </div>
+
+      <!-- Rechts: Live Challenge-Tracker + Kamera/Exit -->
+      <div class="flex flex-col items-end gap-2 pointer-events-auto">
+        <div class="glass-panel rounded-2xl p-3 w-64 space-y-1.5">
+          <div class="flex items-center justify-between text-[10px] font-display uppercase text-cyan-400">
+            <span>🎯 Aktive Aufträge</span>
+            <span id="hud-session-stunt-cash" class="text-emerald-400">+$0</span>
+          </div>
+          <div id="hud-challenges-live" class="space-y-1.5 text-[11px]"></div>
+        </div>
+        <div class="flex gap-2">
+          <button id="btn-race-cam" class="glass-panel px-3 py-1.5 rounded-xl text-xs font-display hover:border-cyan-400">🎥 KAMERA (C)</button>
+          <button id="btn-race-quit" class="glass-panel px-3 py-1.5 rounded-xl text-xs font-display text-rose-300 hover:border-rose-500">✕ GARAGE</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM ROW: Mobile Touch links | Runder Cyberpunk-SVG-Drehzahlmesser rechts/mittig -->
+    <div class="flex flex-col sm:flex-row items-end justify-between gap-4">
+      <!-- Touch Steuerung (Mobile) -->
+      <div class="flex gap-2 pointer-events-auto sm:opacity-75">
+        <button id="touch-left" class="w-12 h-12 rounded-2xl glass-panel active:bg-cyan-500/40 font-display text-lg">◀</button>
+        <button id="touch-right" class="w-12 h-12 rounded-2xl glass-panel active:bg-cyan-500/40 font-display text-lg">▶</button>
+        <button id="touch-brake" class="w-14 h-12 rounded-2xl glass-panel active:bg-rose-500/40 font-display text-[10px] font-bold text-rose-300">BREMSE (S)</button>
+        <button id="touch-drift" class="w-14 h-12 rounded-2xl glass-panel active:bg-amber-500/40 font-display text-[10px] font-bold text-amber-300">HB (SPACE)</button>
+        <button id="touch-nos" class="w-12 h-12 rounded-2xl glass-panel active:bg-fuchsia-500/40 font-display text-[10px] font-bold text-fuchsia-300">NOS</button>
+        <button id="touch-gas" class="w-14 h-12 rounded-2xl bg-cyan-500/30 border border-cyan-400 font-display text-[10px] font-black">GAS (W)</button>
+      </div>
+
+      <!-- RUNDER CYBERPUNK SVG-DREHZAHLMESSER + NOS-ARC -->
+      <div class="glass-panel rounded-3xl p-3.5 flex items-center gap-4 neon-cyan-glow">
+        <div class="relative w-48 h-44 flex items-center justify-center">
+          <svg viewBox="0 0 220 200" class="w-full h-full overflow-visible">
+            <defs>
+              <linearGradient id="rpmArcGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#00f3ff" />
+                <stop offset="70%" stop-color="#f59e0b" />
+                <stop offset="100%" stop-color="#ff0055" />
+              </linearGradient>
+            </defs>
+            <!-- Hintergrund-Skalenbogen (240 Grad von 150° bis 390°) -->
+            <path d="M 40.7 150 A 80 80 0 1 1 179.3 150" fill="none" stroke="rgba(30,41,59,0.9)" stroke-width="14" stroke-linecap="round" />
+            <!-- Dynamischer RPM-Füllbogen -->
+            <path id="svg-rpm-arc" d="M 40.7 150 A 80 80 0 1 1 179.3 150" fill="none" stroke="url(#rpmArcGrad)" stroke-width="14" stroke-linecap="round" stroke-dasharray="335" stroke-dashoffset="335" />
+            <!-- Redline-Markierung -->
+            <path d="M 172 82 A 80 80 0 0 1 179.3 150" fill="none" stroke="rgba(255,0,85,0.45)" stroke-width="4" />
+            <!-- Glühende Drehzahlmesser-Nadel -->
+            <g id="svg-rpm-needle" class="tacho-needle" style="transform: rotate(-120deg);">
+              <polygon points="107,110 113,110 110,34" fill="#00f3ff" />
+              <circle cx="110" cy="110" r="8" fill="#0f172a" stroke="#00f3ff" stroke-width="3" />
+            </g>
+          </svg>
+
+          <!-- Digital-Readout im Zentrum des Drehzahlmessers -->
+          <div class="absolute inset-0 flex flex-col items-center justify-end pb-1 pointer-events-none">
+            <div class="flex items-center gap-1.5 mb-0.5">
+              <span id="hud-shift-light" class="px-2 py-0.5 rounded bg-slate-800 text-slate-500 font-display font-black text-[10px]">SHIFT</span>
+              <span id="hud-gear" class="px-2.5 py-0.5 rounded-lg bg-cyan-400 text-slate-950 font-display font-black text-lg">1</span>
+            </div>
+            <div id="hud-speed" class="font-display font-black text-3xl text-white leading-none">0</div>
+            <div class="text-[9px] font-display text-cyan-300 tracking-widest">KM/H</div>
+          </div>
+        </div>
+
+        <!-- Vertikale NOS-Säule -->
+        <div class="flex flex-col items-center h-36 justify-between">
+          <span class="font-display font-black text-[10px] text-fuchsia-400">NOS</span>
+          <div class="w-4 flex-1 my-1 bg-slate-900 rounded-full overflow-hidden border border-slate-700 flex flex-col justify-end">
+            <div id="hud-nos-fill" class="w-full bg-gradient-to-t from-fuchsia-600 to-cyan-400 transition-all duration-75" style="height: 100%"></div>
+          </div>
+          <span id="hud-nos-pct" class="font-display text-[10px] text-slate-300">100%</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       FINISH & LEVEL-UP MODAL
+       ========================================================================= -->
+  <section id="finish-modal" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-xl flex items-center justify-center p-4">
+    <div class="glass-panel rounded-3xl p-6 sm:p-8 max-w-md w-full text-center neon-cyan-glow space-y-4">
+      <div id="finish-levelup-banner" class="hidden py-1.5 px-3 rounded-xl bg-gradient-to-r from-amber-400 to-pink-500 text-slate-950 font-display font-black text-xs animate-bounce">
+        🎉 LEVEL UP! NEUE FAHRZEUGE IM AUTOHAUS FREIGESCHALTET!
+      </div>
+      <div class="text-xs font-display uppercase tracking-widest text-cyan-400">Ziellinie Überquert</div>
+      <h2 id="finish-rank-title" class="font-display font-black text-3xl text-white">🏆 PLATZ 1!</h2>
+
+      <div class="bg-slate-900/85 rounded-2xl p-4 space-y-2 text-xs">
+        <div class="flex justify-between"><span class="text-slate-400">Rennzeit:</span><span id="finish-time" class="font-display text-white">01:12.4</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Platzierungs-Prämie:</span><span id="finish-base-cash" class="font-display text-emerald-300">+$6,000</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Stunt- & Drift-Bonus:</span><span id="finish-stunt-cash" class="font-display text-amber-300">+$1,250</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Gewonnene Reputation:</span><span id="finish-xp" class="font-display text-cyan-300">+450 XP</span></div>
+        <div class="flex justify-between border-t border-slate-800 pt-2 text-amber-300 font-bold">
+          <span>Mystery Slot-Crate:</span><span>+1 GRATIS-DREH 🎰</span>
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <button id="btn-finish-rematch" class="flex-1 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-display font-black text-xs">↻ REVANCHE</button>
+        <button id="btn-finish-to-garage" class="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-display font-bold text-xs">🏠 WERKSTATT</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       ES-MODULE HAUPTSKRIPT
+       Struktur: Config -> State -> Audio -> Assets/Procedural Meshes -> Track ->
+                 Vehicle Physics -> HUD/UI -> Challenges -> Crate ->
+                 Garage Camera -> Multiplayer -> Game Loop -> Init
+       ========================================================================= -->
+  <script type="module" src="boot.js"></script>
+</body>
+</html>

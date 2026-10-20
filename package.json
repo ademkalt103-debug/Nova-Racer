@@ -1,15 +1,17 @@
 {
-  "name": "nova-racer-3d-overdrive",
-  "version": "4.0.0",
+  "name": "nova-racer-rust",
+  "version": "7.0.0",
   "private": true,
-  "description": "NOVA RACER 3D: Ultimate Overdrive Edition v4.0 - 4 Game Modes, 8 3D Tracks with Guardrails, Illustrated PCR Parts Shop, GDPR Cookies & Invite-Link Multiplayer",
-  "main": "server.js",
+  "description": "Rust/WebAssembly Nova Racer with Rust HTTP/WebSocket server",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "cargo run --locked -p nova-server",
+    "dev": "cargo run --locked -p nova-server",
+    "build": "node tools/build.cjs",
+    "test:protocol": "node tools/protocol-test.cjs",
+    "test:browser": "node tools/browser-test.cjs"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22"
   },
-  "license": "MIT"
+  "license": "Apache-2.0"
 }
