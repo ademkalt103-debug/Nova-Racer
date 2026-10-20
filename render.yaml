@@ -1,11 +1,11 @@
 services:
   - type: web
     name: nova-racer
-    env: node
+    runtime: rust
     plan: free
-    buildCommand: npm install
-    startCommand: npm start
+    buildCommand: sh tools/build.sh
+    startCommand: ./target/release/nova-server
     healthCheckPath: /healthz
     envVars:
-      - key: NODE_ENV
-        value: production
+      - key: HOST
+        value: 0.0.0.0

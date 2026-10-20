@@ -1,0 +1,15 @@
+{
+  "name": "nova-racer-3d-overdrive",
+  "version": "4.0.0",
+  "private": true,
+  "description": "NOVA RACER 3D: Ultimate Overdrive Edition v4.0 - 4 Game Modes, 8 3D Tracks with Guardrails, Illustrated PCR Parts Shop, GDPR Cookies & Invite-Link Multiplayer",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}
